@@ -4,7 +4,7 @@
 
 Ripple is a production-grade web application built for the **Appwrite Databases Hackathon**. It helps college club organizers detect, visualize, and fix outdated event information across announcements, social copy, posters, and volunteer instructions whenever an official detail changes.
 
-- **Live Public Demo**: [https://ripple-hackathon.vercel.app](https://ripple-hackathon.vercel.app) *(Deploy via Vercel)*
+- **Live Public Demo**: [https://ripple-hackathon.vercel.app/](https://ripple-hackathon.vercel.app/)
 - **Demo Scenario**: Campus Build Night (Pre-seeded with 6 materials and 1-click official detail shift)
 
 ---
