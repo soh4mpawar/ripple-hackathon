@@ -49,6 +49,7 @@ export default function EventWorkspacePage({
   const [claims, setClaims] = useState<ClaimRow[]>([]);
   const [changes, setChanges] = useState<ChangeRow[]>([]);
   const [resolutions, setResolutions] = useState<ResolutionRow[]>([]);
+  const [versions, setVersions] = useState<any[]>([]);
   const [summaries, setSummaries] = useState<Record<string, MaterialComparisonSummary>>({});
   const [stats, setStats] = useState({
     totalMaterials: 0,
@@ -97,6 +98,7 @@ export default function EventWorkspacePage({
       setClaims(data.claims);
       setChanges(data.changes);
       setResolutions(data.resolutions);
+      setVersions(data.versions || []);
       setSummaries(data.summaries);
       if (data.stats) setStats(data.stats);
     } catch (err: any) {
@@ -232,7 +234,7 @@ export default function EventWorkspacePage({
 
           <div className="bg-white border border-conflict-200 rounded-2xl p-4 shadow-2xs">
             <span className="text-xs font-semibold text-conflict-700 uppercase tracking-wide">
-              Outdated Conflicts
+              Outdated materials
             </span>
             <div className="text-2xl font-black text-conflict-600 mt-1">
               {stats.conflictCount}
@@ -391,6 +393,7 @@ export default function EventWorkspacePage({
           currentEventRevision={event.currentRevision}
           changes={changes}
           resolutions={resolutions}
+          versions={versions}
           onClose={() => setSelectedMaterialId(null)}
           onRefresh={loadData}
         />

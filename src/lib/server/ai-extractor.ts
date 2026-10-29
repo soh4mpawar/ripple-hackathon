@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { OfficialField, normalizeFieldValue } from '../comparison';
+import type { OfficialField } from '../comparison.ts';
+import { normalizeFieldValue } from '../comparison.ts';
 
 export interface ExtractedClaimProposal {
   field: OfficialField;
@@ -196,66 +197,159 @@ export async function extractClaimsFromMaterial(params: {
 
 /**
  * Deterministic regex fallback for text extraction when AI API is unavailable.
- * Preserves the volunteer arrival vs event start distinction and relative date flags.
+ * Preserves the volunteer arrival vs event start distinction and keeps deadline date+time together.
  */
-function fallbackTextExtraction(
+export function fallbackTextExtraction(
   text: string,
   eventTimezone: string
 ): ExtractionResult {
   const claims: ExtractedClaimProposal[] = [];
+  const consumedTimeRanges: { start: number; end: number }[] = [];
+  const consumedDateRanges: { start: number; end: number }[] = [];
 
-  // Check for dates (e.g. October 31, 2026 or 2026-10-31 or Oct 31)
+  // 1. First, search for explicit registration deadline (Date + Time together)
+  // Example: "Registration deadline: October 30, 2026, 6:00 PM" or "RSVP by Oct 30 at 5:00 PM"
+  const deadlineHeaderRegex = /(?:registration\s+deadline|rsvp\s+(?:by|before)|deadline\s+to\s+register|deadline|register\s+(?:by|before|promptly\s+on)|portal\s+closes)\s*[:\-]?\s*/gi;
+  let dlHeaderMatch;
+  while ((dlHeaderMatch = deadlineHeaderRegex.exec(text)) !== null) {
+    const afterHeaderIndex = dlHeaderMatch.index + dlHeaderMatch[0].length;
+    const remainingText = text.slice(afterHeaderIndex);
+
+    // Look for date immediately or closely following the header
+    const dateMatch = remainingText.match(
+      /\b(?:(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{4}-\d{2}-\d{2})/i
+    );
+
+    if (dateMatch && dateMatch.index !== undefined && dateMatch.index < 40) {
+      let deadlineRaw = dateMatch[0];
+      const afterDateIndex = afterHeaderIndex + dateMatch.index + dateMatch[0].length;
+      const afterDateText = text.slice(afterDateIndex);
+
+      // Check if immediately followed by a time: ", 6:00 PM" or " at 6:00 PM"
+      const timeAfterDateMatch = afterDateText.match(/^\s*(?:,|at)?\s*([0-1]?\d:[0-5]\d\s*(?:am|pm)?|[0-2]?\d\s*(?:am|pm))/i);
+      let fullEndIndex = afterHeaderIndex + dateMatch.index + dateMatch[0].length;
+
+      if (timeAfterDateMatch) {
+        deadlineRaw = `${deadlineRaw}, ${timeAfterDateMatch[1].trim()}`;
+        fullEndIndex = afterDateIndex + timeAfterDateMatch[0].length;
+
+        // Mark this time as consumed so start_time scanner ignores it
+        const timeStart = text.indexOf(timeAfterDateMatch[1], afterDateIndex);
+        if (timeStart !== -1) {
+          consumedTimeRanges.push({ start: timeStart, end: timeStart + timeAfterDateMatch[1].length });
+        }
+      }
+
+      const dateStart = afterHeaderIndex + dateMatch.index;
+      consumedDateRanges.push({ start: dateStart, end: fullEndIndex });
+
+      const evidenceQuote = text.slice(dlHeaderMatch.index, fullEndIndex).trim();
+
+      claims.push({
+        field: 'registration_deadline',
+        rawValue: deadlineRaw,
+        proposedNormalizedValue: normalizeFieldValue('registration_deadline', deadlineRaw),
+        evidenceQuote,
+        evidenceLocation: 'Deadline notice',
+        ambiguityReason: null,
+        needsClarification: false,
+      });
+    }
+  }
+
+  // 2. Check for event dates (e.g. October 31, 2026 or 2026-10-31) that were not consumed by deadline
   const dateRegex = /\b(?:(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}|\d{4}-\d{2}-\d{2})\b/gi;
   let dateMatch;
   while ((dateMatch = dateRegex.exec(text)) !== null) {
+    const matchStart = dateMatch.index;
+    const matchEnd = matchStart + dateMatch[0].length;
+
+    // Skip if already consumed by registration deadline
+    const isConsumed = consumedDateRanges.some((r) => matchStart >= r.start && matchEnd <= r.end);
+    if (isConsumed) continue;
+
     const rawValue = dateMatch[0];
-    const surrounding = text.slice(
-      Math.max(0, dateMatch.index - 30),
-      Math.min(text.length, dateMatch.index + rawValue.length + 30)
-    );
+    const contextBefore = text.slice(Math.max(0, matchStart - 40), matchStart).toLowerCase();
+    const isDeadlineContext = /deadline|register|rsvp|last\s+day/i.test(contextBefore);
 
-    const isDeadline = /deadline|register|rsvp|last\s+day/i.test(surrounding);
-    const field: OfficialField = isDeadline ? 'registration_deadline' : 'event_date';
+    if (isDeadlineContext) {
+      // Check if followed by time
+      const afterText = text.slice(matchEnd);
+      const timeFollow = afterText.match(/^\s*(?:,|at)?\s*([0-1]?\d:[0-5]\d\s*(?:am|pm)?|[0-2]?\d\s*(?:am|pm))/i);
+      let finalRaw = rawValue;
+      let quoteEnd = matchEnd;
 
-    claims.push({
-      field,
-      rawValue,
-      proposedNormalizedValue: normalizeFieldValue(field, rawValue),
-      evidenceQuote: rawValue,
-      evidenceLocation: 'Body text',
-      ambiguityReason: null,
-      needsClarification: false,
-    });
+      if (timeFollow) {
+        finalRaw = `${rawValue}, ${timeFollow[1].trim()}`;
+        quoteEnd = matchEnd + timeFollow[0].length;
+        const timeStart = text.indexOf(timeFollow[1], matchEnd);
+        if (timeStart !== -1) {
+          consumedTimeRanges.push({ start: timeStart, end: timeStart + timeFollow[1].length });
+        }
+      }
+
+      claims.push({
+        field: 'registration_deadline',
+        rawValue: finalRaw,
+        proposedNormalizedValue: normalizeFieldValue('registration_deadline', finalRaw),
+        evidenceQuote: text.slice(Math.max(0, matchStart - 20), quoteEnd).trim(),
+        evidenceLocation: 'Deadline notice',
+        ambiguityReason: null,
+        needsClarification: false,
+      });
+    } else {
+      claims.push({
+        field: 'event_date',
+        rawValue,
+        proposedNormalizedValue: normalizeFieldValue('event_date', rawValue),
+        evidenceQuote: rawValue,
+        evidenceLocation: 'Body text',
+        ambiguityReason: null,
+        needsClarification: false,
+      });
+    }
   }
 
-  // Check for times (e.g. 10:00 AM, 11:00 AM, 8:30 AM)
+  // 3. Check for times (e.g. 10:00 AM, 11:00 AM, 8:30 AM)
   const timeRegex = /\b([0-1]?\d:[0-5]\d\s*(?:am|pm)?|[0-2]?\d\s*(?:am|pm))\b/gi;
   let timeMatch;
   while ((timeMatch = timeRegex.exec(text)) !== null) {
+    const matchStart = timeMatch.index;
+    const matchEnd = matchStart + timeMatch[0].length;
+
+    // Skip if this time was part of registration deadline
+    const isConsumed = consumedTimeRanges.some((r) => matchStart >= r.start && matchEnd <= r.end);
+    if (isConsumed) continue;
+
     const rawValue = timeMatch[0];
-    const contextBefore = text.slice(Math.max(0, timeMatch.index - 40), timeMatch.index).toLowerCase();
+    const contextBefore = text.slice(Math.max(0, matchStart - 40), matchStart).toLowerCase();
+
+    // Check if context before is deadline/registration
+    if (/deadline|register|rsvp|portal\s+closes|cut-off/i.test(contextBefore)) {
+      continue; // Skip: belongs to registration deadline, not start_time
+    }
 
     // Preserve volunteer arrival distinction!
-    const isVolunteer = /volunteer|arrival|staff|setup|reporting/i.test(contextBefore);
+    const isVolunteer = /volunteer|arrival|staff|setup|reporting|crew/i.test(contextBefore);
 
     claims.push({
       field: 'start_time',
       rawValue,
       proposedNormalizedValue: normalizeFieldValue('start_time', rawValue),
       evidenceQuote: text.slice(
-        Math.max(0, timeMatch.index - 20),
-        Math.min(text.length, timeMatch.index + rawValue.length + 15)
+        Math.max(0, matchStart - 20),
+        Math.min(text.length, matchEnd + 15)
       ).trim(),
       evidenceLocation: 'Schedule / Times',
       ambiguityReason: isVolunteer
-        ? 'Volunteer or arrival time detected. Please confirm if this is the public event start time.'
+        ? 'Volunteer arrival or setup time detected. Not verified attendee event start time.'
         : null,
       needsClarification: isVolunteer,
     });
   }
 
-  // Check for venue (patterns with "Venue:", "Location:", "at the ...", "Auditorium", "Innovation Lab")
-  const venueRegex = /(?:venue|location|held\s+at|at)\s*[:\-]?\s*([A-Za-z0-9\s]+(?:Auditorium|Lab|Hall|Center|Room|Building|[A-Z][a-z]+))/i;
+  // 4. Check for venue (patterns with "Venue:", "Location:", "at the ...", "Auditorium", "Innovation Lab")
+  const venueRegex = /(?:venue|location|reporting\s+venue|held\s+at|at\s+the|at)\s*[:\-]?\s*([A-Za-z0-9\s]+(?:Auditorium|Lab|Hall|Center|Room|Building|Pavilion|[A-Z][a-z]+))/i;
   const venueMatch = text.match(venueRegex);
   if (venueMatch) {
     const rawValue = venueMatch[1].trim();
@@ -273,7 +367,7 @@ function fallbackTextExtraction(
   return {
     success: true,
     claims,
-    warning: 'Processed via rule-based parser. Review claims before confirming.',
+    warning: 'Processed via local deterministic heuristic parser. Review claims before confirming.',
     provider: 'local_parser',
   };
 }

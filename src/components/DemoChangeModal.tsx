@@ -155,7 +155,7 @@ export function DemoChangeModal({
             </div>
             <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-stone-600">
               <li>Revision will increment from Rev {currentRevision} to Rev {currentRevision + 1}.</li>
-              <li>Main Poster, WhatsApp announcement, and Volunteer Instructions will flag conflicts.</li>
+              <li>Main Poster, WhatsApp announcement, Volunteer Instructions Handout, and Schedule Excerpt Handout will flag conflicts.</li>
               <li>Registration deadline reminder will remain current (unaffected).</li>
             </ul>
           </div>

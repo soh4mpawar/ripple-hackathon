@@ -227,7 +227,8 @@ export function compareMaterialClaims(
   materialVersion: number,
   claims: Claim[],
   facts: OfficialFact[],
-  currentRevision: number
+  currentRevision: number,
+  sourceText?: string | null
 ): MaterialComparisonSummary {
   // Filter claims strictly belonging to this material and current version
   const relevantClaims = claims.filter(
@@ -246,6 +247,7 @@ export function compareMaterialClaims(
 
   const comparisons: ComparisonResult[] = [];
   let conflictCount = 0;
+  let unsupportedCount = 0;
 
   for (const claim of confirmedClaims) {
     const officialFact = factsByField.get(claim.field);
@@ -254,10 +256,22 @@ export function compareMaterialClaims(
       continue;
     }
 
+    // Verify source support: evidenceQuote must occur in sourceText and must not be synthetic
+    const isSynthetic = claim.evidenceQuote?.startsWith('Updated in v');
+    const isPresentInSource = sourceText
+      ? sourceText.includes(claim.evidenceQuote) || sourceText.includes(claim.rawValue)
+      : true;
+    const isSupported = !isSynthetic && isPresentInSource;
+
+    if (!isSupported) {
+      unsupportedCount++;
+    }
+
     const officialNorm = officialFact.normalizedValue;
     const claimNorm = claim.normalizedValue || normalizeFieldValue(claim.field, claim.rawValue);
 
-    const isMatch = officialNorm === claimNorm;
+    // To match, the claim must BOTH equal the official fact AND be supported by actual source text
+    const isMatch = isSupported && officialNorm === claimNorm;
     if (!isMatch) {
       conflictCount++;
     }
@@ -273,6 +287,8 @@ export function compareMaterialClaims(
       claimRaw: claim.rawValue,
       reason: isMatch
         ? undefined
+        : !isSupported
+        ? `Confirmed claim is unsupported: evidence quote "${claim.evidenceQuote}" does not occur in saved material source.`
         : `Official ${claim.field.replace('_', ' ')} is "${officialFact.displayValue}", but material states "${claim.rawValue}"`,
     });
   }

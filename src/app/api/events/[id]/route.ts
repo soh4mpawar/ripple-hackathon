@@ -75,7 +75,8 @@ export async function GET(
         mat.version,
         claims,
         facts,
-        event.currentRevision
+        event.currentRevision,
+        mat.sourceText
       );
       summariesRecord[mat.$id] = summary;
 

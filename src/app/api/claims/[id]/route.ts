@@ -10,6 +10,9 @@ import {
 import { z } from 'zod';
 
 const UpdateClaimSchema = z.object({
+  field: z
+    .enum(['event_date', 'start_time', 'venue', 'registration_deadline'])
+    .optional(),
   reviewState: z
     .enum(['proposed', 'confirmed', 'rejected', 'needs_clarification'])
     .optional(),

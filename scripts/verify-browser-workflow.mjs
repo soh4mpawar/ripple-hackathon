@@ -1,6 +1,7 @@
 import puppeteer from 'puppeteer-core';
 import path from 'node:path';
 import fs from 'node:fs';
+import assert from 'node:assert/strict';
 
 const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const BASE_URL = 'http://localhost:3000';
@@ -13,7 +14,7 @@ if (!fs.existsSync(SCREENSHOTS_DIR)) {
 
 async function runBrowserVerification() {
   console.log('====================================================');
-  console.log(' Ripple — End-to-End Browser Workflow Verification');
+  console.log(' Ripple — Comprehensive Browser Workflow Verification');
   console.log('====================================================');
 
   const browser = await puppeteer.launch({
@@ -41,7 +42,7 @@ async function runBrowserVerification() {
 
   try {
     // ----------------------------------------------------
-    // STEP 1: Open Home Page & Launch Sample Event
+    // STEP 1: Open Home Page & Launch Fresh Sample Event
     // ----------------------------------------------------
     console.log('\n[Step 1] Loading home page at', BASE_URL);
     await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
@@ -68,8 +69,7 @@ async function runBrowserVerification() {
       return document.body.innerText.includes('Revision 1');
     }, { timeout: 15000 });
 
-    // Extra settle time
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 1200));
 
     // Capture Screenshot 1: Initial Workspace
     const ss1 = path.join(SCREENSHOTS_DIR, '01_initial_workspace.png');
@@ -83,7 +83,16 @@ async function runBrowserVerification() {
     const simBtn = await page.waitForSelector('button ::-p-text(Simulate Official Change)', { timeout: 10000 });
     await simBtn.click();
 
-    console.log('[Step 2] Modal opened. Confirming change to Innovation Lab / 11:00 AM...');
+    console.log('[Step 2] Modal opened. Verifying affected materials list...');
+    await page.waitForSelector('button ::-p-text(Confirm & Commit Demo Change)', { timeout: 10000 });
+    const modalText = await page.evaluate(() => {
+      const modal = document.querySelector('[role="dialog"], .fixed.inset-0');
+      return modal ? modal.textContent : '';
+    });
+    assert.ok(modalText.includes('Schedule Excerpt Handout'), 'Demo change modal must list Schedule Excerpt Handout as affected');
+    console.log('✓ Demo change modal correctly includes Schedule Excerpt Handout.');
+
+    console.log('[Step 2] Confirming change to Innovation Lab / 11:00 AM...');
     const confirmBtn = await page.waitForSelector('button ::-p-text(Confirm & Commit Demo Change)', { timeout: 10000 });
     await confirmBtn.click();
 
@@ -97,14 +106,14 @@ async function runBrowserVerification() {
       return !hasModal && hasRev2;
     }, { timeout: 20000 });
 
-    // Wait for the Outdated Conflicts counter to reach 4
+    // Wait for the Outdated materials counter to reach 4
     await page.waitForFunction(() => {
       const conflictEl = document.querySelector('.text-conflict-600.text-2xl');
       return conflictEl && conflictEl.textContent?.trim() === '4';
     }, { timeout: 15000 });
 
-    console.log('✓ Revision updated to Rev 2 and Outdated Conflicts counter is 4.');
-    await new Promise((r) => setTimeout(r, 1500));
+    console.log('✓ Revision updated to Rev 2 and Outdated materials counter is 4.');
+    await new Promise((r) => setTimeout(r, 1200));
 
     // Capture Screenshot 2: Conflict State
     const ss2 = path.join(SCREENSHOTS_DIR, '02_conflict_state.png');
@@ -114,55 +123,58 @@ async function runBrowserVerification() {
     // Verify materials 1, 2, 3, and 6 conflict
     const bodyText = await page.evaluate(() => document.body.innerText);
     console.log('[Step 2] Verifying materials in conflict state:');
-    console.log(`  - Main Poster Copy present: ${bodyText.includes('Main Poster Copy')}`);
-    console.log(`  - WhatsApp Group Announcement present: ${bodyText.includes('WhatsApp Group Announcement')}`);
-    console.log(`  - Volunteer Instructions Handout present: ${bodyText.includes('Volunteer Instructions Handout')}`);
-    console.log(`  - Schedule Excerpt Handout present: ${bodyText.includes('Schedule Excerpt Handout')}`);
-    console.log(`  - Registration Reminder present: ${bodyText.includes('Registration Reminder Email')}`);
-    console.log(`  - Sponsor Thank-You present: ${bodyText.includes('Sponsor Thank-You Graphic')}`);
+    assert.ok(bodyText.includes('Main Poster Copy'), 'Main Poster Copy present');
+    assert.ok(bodyText.includes('WhatsApp Group Announcement'), 'WhatsApp Announcement present');
+    assert.ok(bodyText.includes('Volunteer Instructions Handout'), 'Volunteer Instructions present');
+    assert.ok(bodyText.includes('Schedule Excerpt Card'), 'Schedule Excerpt Card present');
+    assert.ok(bodyText.includes('Discord Registration Reminder'), 'Discord Registration Reminder present');
+    assert.ok(bodyText.includes('Sponsor Thank-You Note'), 'Sponsor Thank-You Note present');
 
     // ----------------------------------------------------
-    // STEP 3: Open Conflict Evidence & Apply Text Correction
+    // STEP 3: Verify Correction Generation & Apply Correction (P0 Fix)
     // ----------------------------------------------------
-    console.log('\n[Step 3] Opening "WhatsApp Group Announcement" card to inspect conflict evidence...');
-    // Scroll down to ensure cards are visible
+    console.log('\n[Step 3] Opening "WhatsApp Group Announcement" card to inspect conflict evidence & corrections...');
     await page.evaluate(() => window.scrollBy(0, 400));
     await new Promise((r) => setTimeout(r, 500));
 
     const whatsappTitle = await page.waitForSelector('h3 ::-p-text(WhatsApp Group Announcement)', { timeout: 10000 });
-    // Click parent card
     await whatsappTitle.evaluate((el) => {
       const card = el.closest('.group');
       if (card) card.click();
       else el.click();
     });
 
-    // Wait for the slide-over drawer / detail panel
     await page.waitForSelector('button ::-p-text(Claims & Review)', { timeout: 10000 });
     console.log('✓ Detail panel drawer opened.');
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 800));
 
-    // Verify conflict evidence quotes are displayed
-    const panelEvidence = await page.evaluate(() => {
-      const drawer = document.querySelector('aside, [role="dialog"], .border-l, .fixed.inset-y-0.right-0');
-      return drawer ? drawer.innerText : document.body.innerText;
-    });
-    const showsOutdatedVenue = panelEvidence.includes('Innovation Lab');
-    const showsOutdatedTime = panelEvidence.includes('11:00 AM');
-    console.log(`✓ Conflict evidence quotes: displays "Innovation Lab"=${showsOutdatedVenue}, "11:00 AM"=${showsOutdatedTime}`);
-
-    // Click "Correction Preview" tab
+    // Switch to "Correction Preview" tab
     console.log('[Step 3] Switching to "Correction Preview" tab...');
     const correctionsTab = await page.waitForSelector('button ::-p-text(Correction Preview)', { timeout: 10000 });
     await correctionsTab.click();
     await new Promise((r) => setTimeout(r, 1000));
 
-    // Apply correction (creates v2)
+    // Verify suggested text in textarea
+    const suggestedText = await page.evaluate(() => {
+      const textarea = document.querySelector('textarea');
+      return textarea ? textarea.value : '';
+    });
+
+    console.log('Suggested Correction Text:');
+    console.log(suggestedText);
+
+    assert.ok(suggestedText.includes('11:00 AM'), 'Suggested text MUST contain new start time 11:00 AM');
+    assert.ok(suggestedText.includes('Innovation Lab'), 'Suggested text MUST contain new venue Innovation Lab');
+    assert.ok(!suggestedText.includes('Main Auditorium'), 'Suggested text MUST NOT contain obsolete Main Auditorium');
+    assert.ok(!suggestedText.includes('10:00 AM'), 'Suggested text MUST NOT contain obsolete 10:00 AM');
+    console.log('✓ Verified: Suggested text replaces ALL conflicting facts (both time and venue).');
+
+    // Apply correction (creates Version 2)
     console.log('[Step 3] Clicking "Apply Correction" button...');
     const applyBtn = await page.waitForSelector('button ::-p-text(Apply Correction)', { timeout: 10000 });
     await applyBtn.click();
 
-    // Wait for drawer to update with v2 and spinner to settle
+    // Wait for drawer to update with v2
     await page.waitForFunction(() => {
       const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
       const isSpinning = !!drawer?.querySelector('.animate-spin');
@@ -170,31 +182,164 @@ async function runBrowserVerification() {
       return drawer && hasV2 && !isSpinning;
     }, { timeout: 20000 });
 
-    console.log('✓ Material successfully updated to Version 2 in database and UI.');
     await new Promise((r) => setTimeout(r, 1500));
+
+    // Switch back to "Claims & Review" tab to inspect newly created Version 2
+    const claimsTab = await page.waitForSelector('button ::-p-text(Claims & Review)', { timeout: 10000 });
+    await claimsTab.click();
+    await new Promise((r) => setTimeout(r, 1000));
+
+    // Inspect drawer content
+    const drawerDetails = await page.evaluate(() => {
+      const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
+      const text = drawer ? drawer.innerText : '';
+      const sourcePre = drawer?.querySelector('pre')?.textContent || '';
+      return { text, sourcePre };
+    });
+
+    console.log('[Step 3] Verifying Version 2 saved state in drawer:');
+    assert.ok(drawerDetails.sourcePre.includes('11:00 AM'), 'Saved source MUST contain 11:00 AM');
+    assert.ok(drawerDetails.sourcePre.includes('Innovation Lab'), 'Saved source MUST contain Innovation Lab');
+    assert.ok(!drawerDetails.sourcePre.includes('Main Auditorium'), 'Saved source MUST NOT contain Main Auditorium');
+    assert.ok(!drawerDetails.text.includes('Updated in v2'), 'MUST NOT contain synthetic "Updated in v2" quotes');
+
+    // Verify status is Verified Current
+    assert.ok(drawerDetails.text.includes('Verified Current'), 'Material must be Verified Current');
+    console.log('✓ Verified: Version 2 saved source has authentic quotes, no synthetic evidence, and is Verified Current!');
 
     // Capture Screenshot 3: Corrected Material
     const ss3 = path.join(SCREENSHOTS_DIR, '03_corrected_material.png');
     await page.screenshot({ path: ss3, fullPage: true });
     console.log(`✓ [Screenshot 3] Corrected material saved: ${ss3}`);
 
-    // Close detail panel
-    const closeBtn = await page.$('button[title="Close panel"]');
-    if (closeBtn) await closeBtn.click();
-    else await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('button[title="Close panel"]'), { timeout: 5000 });
-    await new Promise((r) => setTimeout(r, 800));
+    // ----------------------------------------------------
+    // STEP 4: Audit History Preserved Source Inspection
+    // ----------------------------------------------------
+    console.log('\n[Step 4] Checking preserved version snapshots in Audit History tab...');
+    const auditTab = await page.waitForSelector('button ::-p-text(Audit History)', { timeout: 10000 });
+    await auditTab.click();
+    await new Promise((r) => setTimeout(r, 1000));
+
+    // Click "Inspect Preserved Source"
+    const inspectBtn = await page.waitForSelector('button ::-p-text(Inspect Preserved Source)', { timeout: 10000 });
+    await inspectBtn.click();
+    await new Promise((r) => setTimeout(r, 500));
+
+    const auditSnapshotText = await page.evaluate(() => {
+      const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
+      return drawer ? drawer.innerText : '';
+    });
+
+    assert.ok(auditSnapshotText.includes('Main Auditorium'), 'Preserved Version 1 snapshot must preserve original Main Auditorium text');
+    assert.ok(auditSnapshotText.includes('10:00 AM'), 'Preserved Version 1 snapshot must preserve original 10:00 AM text');
+    console.log('✓ Verified: Preserved Version 1 snapshot accurately retains historical source copy.');
+
+    const ss5 = path.join(SCREENSHOTS_DIR, '05_version_history.png');
+    await page.screenshot({ path: ss5, fullPage: true });
+    console.log(`✓ [Screenshot 5] Version history with preserved snapshot saved: ${ss5}`);
+
+    // Close drawer
+    await page.keyboard.press('Escape');
+    await new Promise((r) => setTimeout(r, 500));
 
     // ----------------------------------------------------
-    // STEP 4: Upload Realistic Poster & Manual Claim Entry
+    // STEP 5: Test Exact User Announcement Input (P1 Fix)
     // ----------------------------------------------------
-    console.log('\n[Step 4] Testing realistic poster upload through UI modal...');
-    // Scroll back to top
+    console.log('\n[Step 5] Adding material with the exact user announcement test case...');
     await page.evaluate(() => window.scrollTo(0, 0));
     await new Promise((r) => setTimeout(r, 500));
 
     const addMatBtn = await page.waitForSelector('button ::-p-text(Add Event Material)', { timeout: 10000 });
     await addMatBtn.click();
+
+    // Type title
+    const titleInput = await page.waitForSelector('input[placeholder*="Instagram Story"], input[placeholder*="title" i], input[type="text"]', { timeout: 10000 });
+    await titleInput.type('Discord & Telegram Community Blast');
+
+    // Paste exact test copy
+    const testInput = 'Campus Build Night is on October 31, 2026. Event start time: 11:00 AM. Venue: Innovation Lab. Volunteer arrival: 8:30 AM. Registration deadline: October 30, 2026, 6:00 PM.';
+    const textArea = await page.waitForSelector('textarea', { timeout: 10000 });
+    await textArea.type(testInput);
+
+    // Submit
+    const submitBtn = await page.waitForSelector('button[type="submit"]', { timeout: 10000 });
+    await submitBtn.click();
+
+    // Wait for card to appear
+    await page.waitForFunction(() => {
+      return document.body.innerText.includes('Discord & Telegram Community Blast');
+    }, { timeout: 20000 });
+    console.log('✓ New announcement material created with AI/parser extraction.');
+
+    // Open detail panel for this newly added material
+    const newCard = await page.waitForSelector('h3 ::-p-text(Discord & Telegram Community Blast)', { timeout: 10000 });
+    await newCard.evaluate((el) => {
+      const card = el.closest('.group');
+      if (card) card.click();
+      else el.click();
+    });
+
+    await page.waitForSelector('button ::-p-text(Claims & Review)', { timeout: 10000 });
+    await new Promise((r) => setTimeout(r, 1200));
+
+    const newClaimsText = await page.evaluate(() => {
+      const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
+      return drawer ? drawer.innerText : '';
+    });
+
+    console.log('[Step 5] Verifying extraction results on the user test input:');
+    assert.ok(
+      newClaimsText.includes('October 30, 2026, 6:00 PM'),
+      'Registration deadline MUST preserve both date and time (October 30, 2026, 6:00 PM)'
+    );
+    assert.ok(
+      newClaimsText.includes('8:30 AM'),
+      'Volunteer arrival 8:30 AM must be extracted'
+    );
+    assert.ok(
+      newClaimsText.toLowerCase().includes('needs clarification'),
+      'Volunteer arrival 8:30 AM must be flagged with "needs clarification"'
+    );
+    assert.ok(
+      newClaimsText.includes('11:00 AM'),
+      'Event start time 11:00 AM must be extracted'
+    );
+    assert.ok(
+      newClaimsText.includes('Extractor: Local Deterministic Parser') || newClaimsText.includes('Extractor: AI'),
+      'UI must indicate whether local parser or AI was used'
+    );
+    console.log('✓ Verified: Registration deadline preserved date+time together; volunteer arrival flagged for clarification; parser badge displayed.');
+
+    // Test inline claim editing
+    console.log('[Step 5] Testing inline claim editor on proposed claim...');
+    const editClaimBtn = await page.waitForSelector('button[title="Edit proposed claim field or value"]', { timeout: 5000 });
+    await editClaimBtn.click();
+    await new Promise((r) => setTimeout(r, 500));
+
+    const hasEditClaimForm = await page.evaluate(() => {
+      return document.body.innerText.toLowerCase().includes('edit claim details');
+    });
+    assert.ok(hasEditClaimForm, 'Inline claim editor must open with EDIT CLAIM DETAILS form');
+    console.log('✓ Verified: Inline claim editor opens cleanly and allows field/value adjustment.');
+
+    // Close claim editor without altering data
+    const cancelEditBtn = await page.waitForSelector('button ::-p-text(Cancel)', { timeout: 5000 });
+    await cancelEditBtn.click();
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Close drawer
+    await page.keyboard.press('Escape');
+    await new Promise((r) => setTimeout(r, 500));
+
+    // ----------------------------------------------------
+    // STEP 6: Upload Realistic Poster & Manual Claim Entry
+    // ----------------------------------------------------
+    console.log('\n[Step 6] Testing realistic poster upload through UI modal...');
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await new Promise((r) => setTimeout(r, 500));
+
+    const addMatBtn2 = await page.waitForSelector('button ::-p-text(Add Event Material)', { timeout: 10000 });
+    await addMatBtn2.click();
 
     // Switch to Poster Graphic tab in modal
     await page.waitForSelector('button ::-p-text(Poster Graphic)', { timeout: 10000 });
@@ -202,8 +347,8 @@ async function runBrowserVerification() {
     await posterTab.click();
 
     // Fill title
-    const titleInput = await page.$('input[placeholder*="Instagram Story"], input[placeholder*="title" i], input[type="text"]');
-    await titleInput.type('Official Hackathon Print Poster (High-Res)');
+    const posterTitleInput = await page.$('input[placeholder*="Instagram Story"], input[placeholder*="title" i], input[type="text"]');
+    await posterTitleInput.type('Official Hackathon Print Poster (High-Res)');
 
     // Upload file
     const fileInput = await page.$('input[type="file"]');
@@ -239,7 +384,7 @@ async function runBrowserVerification() {
     console.log(`✓ UI clearly labels image extraction as unverified (no false claim of OCR): ${unverifiedNotice}`);
 
     // Enter manual claim for the uploaded poster
-    console.log('[Step 4] Adding manual claim visible on poster: Date = Saturday, November 1, 2026...');
+    console.log('[Step 6] Adding manual claim visible on poster: Date = Saturday, November 1, 2026...');
     const addClaimManualBtn = await page.waitForSelector('button ::-p-text(Add Claim Manually)', { timeout: 10000 });
     await addClaimManualBtn.click();
 
@@ -272,50 +417,25 @@ async function runBrowserVerification() {
     await new Promise((r) => setTimeout(r, 500));
 
     // ----------------------------------------------------
-    // STEP 5: Reload and Verify Database Persistence
+    // STEP 7: Reload and Verify Database Persistence
     // ----------------------------------------------------
-    console.log('\n[Step 5] Reloading browser page to verify database persistence...');
+    console.log('\n[Step 7] Reloading browser page to verify database persistence...');
     await page.reload({ waitUntil: 'networkidle2' });
     await page.waitForSelector('h1', { timeout: 15000 });
 
     const persistedText = await page.evaluate(() => document.body.innerText);
     const persistedRev2 = persistedText.includes('Rev 2');
     const persistedPoster = persistedText.includes('Official Hackathon Print Poster');
-    console.log(`✓ Persistence verified after full browser reload: Rev 2=${persistedRev2}, New Material=${persistedPoster}`);
+    const persistedDiscord = persistedText.includes('Discord & Telegram Community Blast');
+    console.log(`✓ Persistence verified after full browser reload: Rev 2=${persistedRev2}, Poster=${persistedPoster}, Discord Blast=${persistedDiscord}`);
+    assert.ok(persistedRev2, 'Must persist Rev 2 after reload');
+    assert.ok(persistedPoster, 'Must persist uploaded poster material after reload');
+    assert.ok(persistedDiscord, 'Must persist new announcement material after reload');
 
     // ----------------------------------------------------
-    // STEP 6: Open Version History & Audit Log
+    // STEP 8: Mobile Viewport Check (375 x 667)
     // ----------------------------------------------------
-    console.log('\n[Step 6] Verifying Revision Audit Log and Material Version History...');
-    const hasAuditLog = persistedText.includes('Revision Change History (Audit Log)');
-    console.log(`✓ Revision Change Audit Log visible: ${hasAuditLog}`);
-
-    // Open WhatsApp announcement again to inspect Audit History tab
-    const whatsappTitle2 = await page.waitForSelector('h3 ::-p-text(WhatsApp Group Announcement)', { timeout: 10000 });
-    await whatsappTitle2.evaluate((el) => {
-      const card = el.closest('.group');
-      if (card) card.click();
-      else el.click();
-    });
-
-    await page.waitForSelector('button ::-p-text(Audit History)', { timeout: 10000 });
-    const auditTab = await page.$('button ::-p-text(Audit History)');
-    await auditTab.click();
-    await new Promise((r) => setTimeout(r, 1000));
-
-    // Capture Screenshot 5: Version History
-    const ss5 = path.join(SCREENSHOTS_DIR, '05_version_history.png');
-    await page.screenshot({ path: ss5, fullPage: true });
-    console.log(`✓ [Screenshot 5] Version history saved: ${ss5}`);
-
-    // Close drawer
-    await page.keyboard.press('Escape');
-    await new Promise((r) => setTimeout(r, 500));
-
-    // ----------------------------------------------------
-    // STEP 7: Mobile Viewport Check (375 x 667)
-    // ----------------------------------------------------
-    console.log('\n[Step 7] Checking mobile responsive layout (375x667)...');
+    console.log('\n[Step 8] Checking mobile responsive layout (375x667)...');
     await page.setViewport({ width: 375, height: 667 });
     await page.evaluate(() => window.scrollTo(0, 0));
     await new Promise((r) => setTimeout(r, 1000));
@@ -328,10 +448,9 @@ async function runBrowserVerification() {
     await page.setViewport({ width: 1280, height: 900 });
 
     // ----------------------------------------------------
-    // STEP 8: Test Logout & Email/Password Registration & Login
+    // STEP 9: Test Logout & Email/Password Registration & Login
     // ----------------------------------------------------
-    console.log('\n[Step 8] Testing Logout and Registration/Login flow...');
-    // Click Logout button in navbar
+    console.log('\n[Step 9] Testing Logout and Registration/Login flow...');
     const logoutBtn = await page.$('button[title="Log out"]');
     if (logoutBtn) {
       await logoutBtn.click();
@@ -361,7 +480,7 @@ async function runBrowserVerification() {
     const passwordField = await page.$('input[type="password"]');
     await passwordField.type(testPassword);
 
-    console.log(`[Step 8] Registering new organizer: ${testEmail}...`);
+    console.log(`[Step 9] Registering new organizer: ${testEmail}...`);
     const submitAuthBtn = await page.$('button[type="submit"]');
     await submitAuthBtn.click();
 

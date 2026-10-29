@@ -5,10 +5,12 @@ import {
   createNewMaterialVersion,
   createClaim,
   recordResolution,
+  getEventFacts,
   MaterialRow,
 } from '@/lib/server/tables-db';
 import { z } from 'zod';
-import { OfficialField } from '@/lib/comparison';
+import { OfficialField, normalizeFieldValue } from '@/lib/comparison';
+import { extractClaimsFromMaterial } from '@/lib/server/ai-extractor';
 
 const ApplyCorrectionSchema = z.object({
   correctedText: z.string().optional(),
@@ -78,15 +80,58 @@ export async function POST(
       validated.replacementFileId
     );
 
-    // If confirmed claims provided for the new version, insert them
+    // If confirmed claims provided for the new version, validate source support
     if (validated.confirmedClaims && validated.confirmedClaims.length > 0) {
       for (const c of validated.confirmedClaims) {
+        if (c.evidenceQuote.startsWith('Updated in v')) {
+          return NextResponse.json(
+            { error: 'Synthetic evidence quotes ("Updated in v...") are not permitted.' },
+            { status: 400 }
+          );
+        }
+        if (validated.correctedText && !validated.correctedText.includes(c.evidenceQuote)) {
+          return NextResponse.json(
+            { error: `Evidence quote "${c.evidenceQuote}" does not occur in saved material source text.` },
+            { status: 400 }
+          );
+        }
         await createClaim(user.id, material.eventId, materialId, newVersion, {
           field: c.field as OfficialField,
           rawValue: c.rawValue,
           evidenceQuote: c.evidenceQuote,
-          evidenceLocation: c.evidenceLocation,
+          evidenceLocation: c.evidenceLocation || 'Corrected text',
           reviewState: 'confirmed',
+        });
+      }
+    } else if (validated.correctedText) {
+      // Automatically extract claims from the actual saved source text
+      const extraction = await extractClaimsFromMaterial({
+        kind: 'text',
+        text: validated.correctedText,
+        eventTimezone: event.timezone,
+      });
+
+      // Get official facts to cross-reference
+      const officialFacts = await getEventFacts(material.eventId, user.id);
+      const factMap = new Map(officialFacts.map((f) => [f.field, f]));
+
+      for (const extractedClaim of extraction.claims) {
+        const norm = extractedClaim.proposedNormalizedValue || normalizeFieldValue(extractedClaim.field, extractedClaim.rawValue);
+
+        // If ambiguous (e.g. volunteer arrival), keep as needs_clarification.
+        // Otherwise confirm the real factual claim extracted from the saved copy.
+        const reviewState = extractedClaim.needsClarification
+          ? 'needs_clarification'
+          : 'confirmed';
+
+        await createClaim(user.id, material.eventId, materialId, newVersion, {
+          field: extractedClaim.field,
+          rawValue: extractedClaim.rawValue,
+          normalizedValue: norm,
+          evidenceQuote: extractedClaim.evidenceQuote,
+          evidenceLocation: extractedClaim.evidenceLocation || 'Corrected text',
+          reviewState,
+          ambiguityReason: extractedClaim.ambiguityReason,
         });
       }
     }

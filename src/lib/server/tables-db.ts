@@ -666,8 +666,12 @@ export async function updateClaim(
   }
 
   const data: Partial<ClaimRow> = { ...updates };
-  if (updates.rawValue && !updates.normalizedValue) {
-    data.normalizedValue = normalizeFieldValue(existing.field, updates.rawValue);
+  const targetField = updates.field || existing.field;
+  if (updates.rawValue || updates.field) {
+    data.normalizedValue = normalizeFieldValue(
+      targetField,
+      updates.rawValue || existing.rawValue
+    );
   }
 
   return await dbAdapter.updateRow<ClaimRow>(

@@ -21,6 +21,9 @@ import {
   History,
   Send,
   AlertCircle,
+  Edit3,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface MaterialDetailPanelProps {
@@ -31,6 +34,7 @@ interface MaterialDetailPanelProps {
   currentEventRevision: number;
   changes: ChangeRow[];
   resolutions: ResolutionRow[];
+  versions?: any[];
   onClose: () => void;
   onRefresh: () => void;
 }
@@ -43,6 +47,7 @@ export function MaterialDetailPanel({
   currentEventRevision,
   changes,
   resolutions,
+  versions,
   onClose,
   onRefresh,
 }: MaterialDetailPanelProps) {
@@ -92,6 +97,58 @@ export function MaterialDetailPanel({
   );
   const [isApplyingCorrection, setIsApplyingCorrection] = useState(false);
   const [copiedNotification, setCopiedNotification] = useState(false);
+
+  // Sync editableCorrection whenever generated suggestions or material changes
+  React.useEffect(() => {
+    if (generatedCorrections.length > 0 && generatedCorrections[0]?.suggestedFullText) {
+      setEditableCorrection(generatedCorrections[0].suggestedFullText);
+    } else {
+      setEditableCorrection(material.sourceText || '');
+    }
+  }, [material.$id, material.version, summary?.conflictCount]);
+
+  // Edit claim state
+  const [editingClaimId, setEditingClaimId] = useState<string | null>(null);
+  const [editClaimField, setEditClaimField] = useState<OfficialField>('venue');
+  const [editClaimValue, setEditClaimValue] = useState('');
+  const [editClaimQuote, setEditClaimQuote] = useState('');
+  const [isUpdatingClaim, setIsUpdatingClaim] = useState(false);
+
+  // Expanded version inspection state
+  const [expandedVersionId, setExpandedVersionId] = useState<string | null>(null);
+
+  function startEditClaim(claim: Claim) {
+    setEditingClaimId(claim.id);
+    setEditClaimField(claim.field);
+    setEditClaimValue(claim.rawValue);
+    setEditClaimQuote(claim.evidenceQuote);
+  }
+
+  async function handleSaveEditedClaim(claimId: string) {
+    setIsUpdatingClaim(true);
+    try {
+      const res = await fetch(`/api/claims/${claimId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          field: editClaimField,
+          rawValue: editClaimValue.trim(),
+          evidenceQuote: editClaimQuote.trim(),
+        }),
+      });
+      if (res.ok) {
+        setEditingClaimId(null);
+        onRefresh();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to update claim');
+      }
+    } catch (err) {
+      console.error('Error updating claim:', err);
+    } finally {
+      setIsUpdatingClaim(false);
+    }
+  }
 
   // External update acknowledgment state
   const [externalAction, setExternalAction] = useState('Posted update on Discord channel');
@@ -163,18 +220,6 @@ export function MaterialDetailPanel({
   async function handleApplyCorrection() {
     setIsApplyingCorrection(true);
     try {
-      // Build updated confirmed claims matching official details
-      const factMap = new Map(facts.map((f) => [f.field, f.displayValue]));
-      const updatedClaims = currentClaims.map((c) => {
-        const officialVal = factMap.get(c.field);
-        return {
-          field: c.field,
-          rawValue: officialVal || c.rawValue,
-          evidenceQuote: officialVal ? `Updated in v${material.version + 1}: ${officialVal}` : c.evidenceQuote,
-          evidenceLocation: 'Corrected text',
-        };
-      });
-
       const res = await fetch(`/api/materials/${material.$id}/version`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,7 +227,6 @@ export function MaterialDetailPanel({
           correctedText: editableCorrection,
           eventRevision: currentEventRevision,
           expectedMaterialVersion: material.version,
-          confirmedClaims: updatedClaims,
           note: `Applied correction to align with official details at Revision ${currentEventRevision}.`,
         }),
       });
@@ -238,6 +282,7 @@ export function MaterialDetailPanel({
   }
 
   const materialResolutions = resolutions.filter((r) => r.materialId === material.$id);
+  const materialVersions = (versions || []).filter((v: any) => v.materialId === material.$id);
 
   return (
     <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-white shadow-2xl z-50 flex flex-col border-l border-stone-200 animate-in slide-in-from-right duration-200">
@@ -389,6 +434,14 @@ export function MaterialDetailPanel({
                 <p className="text-xs text-stone-500 mt-0.5">
                   Confirm or reject factual statements extracted from this material.
                 </p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
+                    Extractor: {material.kind === 'text' ? 'Local Deterministic Parser' : 'Manual Entry / Multimodal AI'}
+                  </span>
+                  <span className="text-[10px] text-stone-600">
+                    • Review and edit values before confirming
+                  </span>
+                </div>
               </div>
 
               <button
@@ -549,6 +602,15 @@ export function MaterialDetailPanel({
 
                         {/* Review Actions */}
                         <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => (editingClaimId === claim.id ? setEditingClaimId(null) : startEditClaim(claim))}
+                            type="button"
+                            className="p-1.5 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
+                            title="Edit proposed claim field or value"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+
                           {claim.reviewState !== 'confirmed' && (
                             <button
                               onClick={() => handleClaimAction(claim.id, 'confirmed')}
@@ -582,14 +644,83 @@ export function MaterialDetailPanel({
                         </div>
                       </div>
 
-                      {/* Evidence quote */}
-                      <div className="text-xs text-stone-600 bg-stone-100/70 p-2 rounded-md font-mono mt-2">
-                        <span className="font-semibold text-stone-500">Quote: </span>
-                        &ldquo;{claim.evidenceQuote}&rdquo;
-                        {claim.evidenceLocation && (
-                          <span className="text-stone-600 ml-2">({claim.evidenceLocation})</span>
-                        )}
-                      </div>
+                      {/* Inline Claim Editor */}
+                      {editingClaimId === claim.id ? (
+                        <div className="mt-3 p-3 bg-white rounded-xl border border-brand-300 shadow-2xs space-y-2.5">
+                          <div className="text-[11px] font-bold text-brand-900 uppercase">
+                            Edit Claim Details
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-semibold text-stone-600 mb-1">
+                                Target Field
+                              </label>
+                              <select
+                                value={editClaimField}
+                                onChange={(e) => setEditClaimField(e.target.value as OfficialField)}
+                                className="w-full text-xs rounded-lg border border-stone-300 p-1.5 bg-white"
+                              >
+                                <option value="event_date">Event Date</option>
+                                <option value="start_time">Start Time</option>
+                                <option value="venue">Venue</option>
+                                <option value="registration_deadline">Registration Deadline</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-semibold text-stone-600 mb-1">
+                                Raw Claim Value
+                              </label>
+                              <input
+                                type="text"
+                                value={editClaimValue}
+                                onChange={(e) => setEditClaimValue(e.target.value)}
+                                className="w-full text-xs rounded-lg border border-stone-300 p-1.5 bg-white"
+                                required
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-stone-600 mb-1">
+                              Evidence Quote (Verbatim from material)
+                            </label>
+                            <input
+                              type="text"
+                              value={editClaimQuote}
+                              onChange={(e) => setEditClaimQuote(e.target.value)}
+                              className="w-full text-xs rounded-lg border border-stone-300 p-1.5 bg-white font-mono"
+                              required
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setEditingClaimId(null)}
+                              className="px-2.5 py-1 text-xs text-stone-600 hover:bg-stone-100 rounded-lg"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isUpdatingClaim}
+                              onClick={() => handleSaveEditedClaim(claim.id)}
+                              className="px-3 py-1 text-xs font-semibold rounded-lg bg-brand-600 text-white hover:bg-brand-700 shadow-2xs"
+                            >
+                              {isUpdatingClaim ? 'Saving...' : 'Save & Update'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Evidence quote */}
+                          <div className="text-xs text-stone-600 bg-stone-100/70 p-2 rounded-md font-mono mt-2">
+                            <span className="font-semibold text-stone-500">Quote: </span>
+                            &ldquo;{claim.evidenceQuote}&rdquo;
+                            {claim.evidenceLocation && (
+                              <span className="text-stone-600 ml-2">({claim.evidenceLocation})</span>
+                            )}
+                          </div>
+                        </>
+                      )}
 
                       {/* Ambiguity Reason */}
                       {claim.ambiguityReason && (
@@ -792,16 +923,81 @@ export function MaterialDetailPanel({
 
         {/* TAB 4: AUDIT HISTORY */}
         {activeTab === 'history' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
               <h3 className="text-sm font-bold text-stone-900">
                 Audit Trail & Resolution History
               </h3>
               <p className="text-xs text-stone-500 mt-0.5">
-                Chronological record of corrections, revisions, and external acknowledgments for this material.
+                Chronological record of corrections, revisions, and preserved historical source copies.
               </p>
             </div>
 
+            {/* Preserved Historical Versions Inspection */}
+            <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-stone-700 uppercase tracking-wide">
+                  Preserved Version Snapshots ({materialVersions.length > 0 ? materialVersions.length : 1})
+                </span>
+                <span className="text-[10px] font-semibold text-stone-600 bg-stone-200/80 px-2 py-0.5 rounded-full">
+                  Current: v{material.version}
+                </span>
+              </div>
+
+              {materialVersions.length > 0 ? (
+                <div className="space-y-2">
+                  {materialVersions.map((v: any) => (
+                    <div key={v.$id} className="p-3 bg-white rounded-lg border border-stone-200 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-stone-900">
+                          Version {v.version} {v.version === material.version ? '(Current)' : '(Historical)'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedVersionId(expandedVersionId === v.$id ? null : v.$id)}
+                          className="text-brand-600 hover:text-brand-800 font-semibold text-[11px] flex items-center gap-1"
+                        >
+                          {expandedVersionId === v.$id ? 'Hide Source' : 'Inspect Preserved Source'}
+                          {expandedVersionId === v.$id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                      </div>
+                      {expandedVersionId === v.$id && (
+                        <pre className="mt-2 p-2.5 bg-stone-50 rounded border border-stone-200 text-xs font-mono whitespace-pre-wrap text-stone-800 max-h-48 overflow-y-auto">
+                          {v.sourceText || '(Binary file material)'}
+                        </pre>
+                      )}
+                      <div className="text-[10px] text-stone-600 mt-1">
+                        Recorded on {new Date(v.createdAt).toLocaleString()}
+                        {v.changeNote && ` • ${v.changeNote}`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 bg-white rounded-lg border border-stone-200 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-stone-900">
+                      Version {material.version} (Active)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedVersionId(expandedVersionId === 'current' ? null : 'current')}
+                      className="text-brand-600 hover:text-brand-800 font-semibold text-[11px] flex items-center gap-1"
+                    >
+                      {expandedVersionId === 'current' ? 'Hide Source' : 'Inspect Active Source'}
+                      {expandedVersionId === 'current' ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </button>
+                  </div>
+                  {expandedVersionId === 'current' && (
+                    <pre className="mt-2 p-2.5 bg-stone-50 rounded border border-stone-200 text-xs font-mono whitespace-pre-wrap text-stone-800 max-h-48 overflow-y-auto">
+                      {material.sourceText || '(Binary file material)'}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Resolutions list */}
             {materialResolutions.length === 0 ? (
               <div className="p-6 text-center border border-dashed border-stone-200 rounded-xl text-xs text-stone-500">
                 No resolution events recorded yet for this material.

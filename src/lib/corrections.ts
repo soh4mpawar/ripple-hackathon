@@ -15,6 +15,46 @@ export interface CorrectionSuggestion {
   explanation: string;
 }
 
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Applies all conflicting claim replacements to source text, ensuring that
+ * multiple conflicts (e.g. venue and time shifts) all reach the final suggested copy.
+ */
+export function applyAllCorrectionsToText(
+  sourceText: string | null,
+  comparisons: ComparisonResult[],
+  facts: OfficialFact[]
+): string {
+  if (!sourceText) return '';
+  let updated = sourceText;
+
+  const factMap = new Map(facts.map((f) => [f.field, f]));
+  const conflicting = comparisons.filter((c) => !c.isMatch);
+
+  for (const comp of conflicting) {
+    const fact = factMap.get(comp.field);
+    if (!fact) continue;
+
+    const originalQuote = comp.claimRaw;
+    const replacement = fact.displayValue;
+
+    if (updated.includes(originalQuote)) {
+      updated = updated.replaceAll(originalQuote, replacement);
+    } else {
+      // Case-insensitive regex fallback
+      const re = new RegExp(escapeRegex(originalQuote), 'gi');
+      if (re.test(updated)) {
+        updated = updated.replace(re, replacement);
+      }
+    }
+  }
+
+  return updated;
+}
+
 /**
  * Generates structured correction suggestions for a material's conflicting claims.
  * Suggestion is bound to currentEventRevision.
@@ -33,7 +73,8 @@ export function generateCorrections(
   const factMap = new Map(facts.map((f) => [f.field, f]));
   const suggestions: CorrectionSuggestion[] = [];
 
-  let workingFullText = sourceText || '';
+  // Compute full text with ALL conflicting claims replaced simultaneously
+  const fullyCorrectedText = applyAllCorrectionsToText(sourceText, conflictingComparisons, facts);
 
   for (const comp of conflictingComparisons) {
     const fact = factMap.get(comp.field);
@@ -41,11 +82,6 @@ export function generateCorrections(
 
     const originalQuote = comp.claimRaw;
     const replacementText = fact.displayValue;
-
-    // Suggest replacement in context if exact text found
-    if (workingFullText && workingFullText.includes(originalQuote)) {
-      workingFullText = workingFullText.replaceAll(originalQuote, replacementText);
-    }
 
     suggestions.push({
       materialId,
@@ -56,7 +92,7 @@ export function generateCorrections(
       originalQuote,
       officialValue: fact.displayValue,
       replacementText,
-      suggestedFullText: workingFullText || undefined,
+      suggestedFullText: fullyCorrectedText || undefined,
       explanation: `Update ${comp.field.replace('_', ' ')} from "${originalQuote}" to official value "${fact.displayValue}" (Rev ${currentEventRevision}).`,
     });
   }
