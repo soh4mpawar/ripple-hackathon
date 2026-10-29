@@ -60,6 +60,7 @@ export default function EventWorkspacePage() {
   const [error, setError] = useState<string | null>(null);
 
   // View state: 'graph' (Impact Map) vs 'list' (Material List)
+  const [hasExplicitViewMode, setHasExplicitViewMode] = useState(false);
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   const [listFilter, setListFilter] = useState<'all' | 'conflicting' | 'review' | 'current'>('all');
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
@@ -70,12 +71,19 @@ export default function EventWorkspacePage() {
   const [isDemoChangeOpen, setIsDemoChangeOpen] = useState(false);
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
 
-  // Default to list mode on narrow mobile viewports
+  // Ensure mobile viewports default to list mode, while respecting explicit user toggle
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setViewMode('list');
+    function checkViewport() {
+      if (!hasExplicitViewMode && typeof window !== 'undefined') {
+        if (window.innerWidth < 768) {
+          setViewMode('list');
+        }
+      }
     }
-  }, []);
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
+    return () => window.removeEventListener('resize', checkViewport);
+  }, [hasExplicitViewMode]);
 
   // Fetch event and auth user
   async function loadData() {
@@ -130,14 +138,13 @@ export default function EventWorkspacePage() {
     rawValue: c.rawValue,
     normalizedValue: c.normalizedValue,
     evidenceQuote: c.evidenceQuote,
-    evidenceLocation: c.evidenceLocation,
-    reviewState: c.reviewState,
+    reviewState: c.reviewState as any,
     ambiguityReason: c.ambiguityReason,
   }));
 
   // Filtered materials for list view
-  const filteredMaterials = materials.filter((mat) => {
-    const summary = summaries[mat.$id];
+  const filteredMaterials = materials.filter((m) => {
+    const summary = summaries[m.$id];
     if (listFilter === 'conflicting') return summary?.status === 'conflicting';
     if (listFilter === 'review') return summary?.status === 'needs_review' || summary?.status === 'unverified';
     if (listFilter === 'current') return summary?.status === 'current';
@@ -149,7 +156,7 @@ export default function EventWorkspacePage() {
       <div className="min-h-screen bg-paper-50 flex flex-col">
         <Navbar user={user} />
         <div className="flex-1 flex items-center justify-center">
-          <div className="text-xs text-stone-500 font-mono">Loading event workspace...</div>
+          <div className="text-xs text-stone-600 font-mono">Loading event workspace...</div>
         </div>
       </div>
     );
@@ -203,12 +210,12 @@ export default function EventWorkspacePage() {
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">
                 {event.name}
               </h1>
-              <span className="text-[11px] font-mono text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded">
-                Revision {event.currentRevision} (Rev {event.currentRevision})
+              <span className="text-[11px] font-mono text-stone-700 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded font-medium">
+                Revision {event.currentRevision}
               </span>
             </div>
-            <p className="text-xs text-stone-500 mt-1">
-              Timezone: <span className="font-mono text-stone-700">{event.timezone}</span>
+            <p className="text-xs text-stone-600 mt-1">
+              Timezone: <span className="font-mono text-stone-800 font-medium">{event.timezone}</span>
             </p>
           </div>
 
@@ -216,9 +223,9 @@ export default function EventWorkspacePage() {
             <button
               onClick={() => setIsAddMaterialOpen(true)}
               type="button"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-2xs transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-2xs transition-colors min-h-[38px]"
             >
-              <Plus size={13} strokeWidth={2.5} />
+              <Plus size={14} strokeWidth={2.5} />
               Add Event Material
             </button>
           </div>
@@ -253,7 +260,7 @@ export default function EventWorkspacePage() {
             <span className="text-stone-300">•</span>
 
             {/* Needs review */}
-            <span className="inline-flex items-center gap-1.5 text-stone-600">
+            <span className="inline-flex items-center gap-1.5 text-stone-700">
               <span className="w-2 h-2 rounded-full bg-review-500" />
               <span>
                 <strong className="font-semibold text-stone-900">{needReviewCount}</strong>{' '}
@@ -263,11 +270,12 @@ export default function EventWorkspacePage() {
 
             <span className="text-stone-300">•</span>
 
-            {/* Matches official details */}
-            <span className="inline-flex items-center gap-1.5 text-stone-600">
+            {/* Matches official details (grammatically correct singular/plural) */}
+            <span className="inline-flex items-center gap-1.5 text-stone-700">
               <span className="w-2 h-2 rounded-full bg-current-600" />
               <span>
-                <strong className="font-semibold text-stone-900">{stats.currentCount}</strong> match official details
+                <strong className="font-semibold text-stone-900">{stats.currentCount}</strong>{' '}
+                {stats.currentCount === 1 ? 'matches official details' : 'match official details'}
               </span>
             </span>
           </div>
@@ -275,28 +283,34 @@ export default function EventWorkspacePage() {
           {/* View Mode Toggle: Impact Map vs Material List */}
           <div className="flex items-center gap-1 bg-paper-100 p-0.5 rounded-md border border-stone-200 text-xs shrink-0">
             <button
-              onClick={() => setViewMode('graph')}
+              onClick={() => {
+                setViewMode('graph');
+                setHasExplicitViewMode(true);
+              }}
               type="button"
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded transition-colors min-h-[32px] ${
                 viewMode === 'graph'
                   ? 'bg-white text-stone-900 shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <Network size={12} />
+              <Network size={13} />
               <span>Impact Map</span>
             </button>
 
             <button
-              onClick={() => setViewMode('list')}
+              onClick={() => {
+                setViewMode('list');
+                setHasExplicitViewMode(true);
+              }}
               type="button"
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded transition-colors min-h-[32px] ${
                 viewMode === 'list'
                   ? 'bg-white text-stone-900 shadow-2xs'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <List size={12} />
+              <List size={13} />
               <span>Material List</span>
             </button>
           </div>
@@ -316,14 +330,14 @@ export default function EventWorkspacePage() {
           <div className="space-y-3 mb-8">
             {/* Filter bar for Material List */}
             <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-stone-200">
-              <div className="flex items-center gap-1.5 text-xs">
+              <div className="flex items-center gap-1.5 text-xs flex-wrap">
                 <button
                   onClick={() => setListFilter('all')}
                   type="button"
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded text-[11px] font-medium transition-colors min-h-[32px] ${
                     listFilter === 'all'
                       ? 'bg-stone-900 text-white'
-                      : 'text-stone-600 hover:bg-stone-100'
+                      : 'text-stone-700 hover:bg-stone-100'
                   }`}
                 >
                   All ({materials.length})
@@ -331,46 +345,46 @@ export default function EventWorkspacePage() {
                 <button
                   onClick={() => setListFilter('conflicting')}
                   type="button"
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded text-[11px] font-medium transition-colors min-h-[32px] ${
                     listFilter === 'conflicting'
-                      ? 'bg-conflict-700 text-white'
+                      ? 'bg-conflict-600 text-white'
                       : 'text-conflict-800 hover:bg-conflict-50'
                   }`}
                 >
-                  Needs update ({stats.conflictCount})
+                  Outdated ({stats.conflictCount})
                 </button>
                 <button
                   onClick={() => setListFilter('review')}
                   type="button"
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded text-[11px] font-medium transition-colors min-h-[32px] ${
                     listFilter === 'review'
-                      ? 'bg-review-700 text-white'
+                      ? 'bg-review-600 text-white'
                       : 'text-review-800 hover:bg-review-50'
                   }`}
                 >
-                  Needs review ({needReviewCount})
+                  Needs Review ({needReviewCount})
                 </button>
                 <button
                   onClick={() => setListFilter('current')}
                   type="button"
-                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  className={`px-3 py-1.5 rounded text-[11px] font-medium transition-colors min-h-[32px] ${
                     listFilter === 'current'
-                      ? 'bg-current-700 text-white'
+                      ? 'bg-current-600 text-white'
                       : 'text-current-800 hover:bg-current-50'
                   }`}
                 >
-                  Matches official ({stats.currentCount})
+                  Matches Official ({stats.currentCount})
                 </button>
               </div>
 
-              <span className="text-[11px] text-stone-500">
-                Click any row to inspect claims and apply corrections
+              <span className="text-[11px] text-stone-600 font-medium">
+                Showing {filteredMaterials.length} of {materials.length} materials
               </span>
             </div>
 
-            {/* Compact well-aligned rows */}
+            {/* List Rows */}
             {filteredMaterials.length === 0 ? (
-              <div className="p-8 text-center border border-dashed border-stone-200 rounded-lg bg-white text-stone-500 text-xs">
+              <div className="p-8 text-center bg-white border border-dashed border-stone-200 rounded-lg text-xs text-stone-600">
                 No materials match the selected filter.
               </div>
             ) : (
@@ -380,7 +394,7 @@ export default function EventWorkspacePage() {
                     key={mat.$id}
                     material={mat}
                     summary={summaries[mat.$id]}
-                    claims={formattedClaims}
+                    claims={formattedClaims.filter((c) => c.materialId === mat.$id)}
                     isSelected={selectedMaterialId === mat.$id}
                     onSelect={() => setSelectedMaterialId(mat.$id)}
                   />
@@ -390,11 +404,11 @@ export default function EventWorkspacePage() {
           </div>
         )}
 
-        {/* Change History Audit Log (Visually restrained) */}
+        {/* Change History Audit Log (Cleanly stacked for mobile and desktop) */}
         {changes.length > 0 && (
           <div className="mt-8 bg-white border border-stone-200 rounded-lg p-5 shadow-2xs">
             <div className="flex items-center gap-2 mb-3 pb-2 border-b border-stone-100">
-              <History size={14} className="text-stone-500" />
+              <History size={15} className="text-stone-600" />
               <h3 className="text-xs font-bold text-stone-900 tracking-tight uppercase">
                 Official Detail Change History
               </h3>
@@ -402,21 +416,27 @@ export default function EventWorkspacePage() {
 
             <div className="divide-y divide-stone-100 text-xs">
               {changes.map((change) => (
-                <div key={change.$id} className="py-2 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="font-semibold text-stone-700 text-[11px] uppercase">
-                      {change.field.replace('_', ' ')}:
-                    </span>
-                    <span className="line-through text-stone-400 font-mono text-[11px]">
-                      {change.oldDisplayValue || 'Initial'}
-                    </span>
-                    <ArrowRight size={10} className="text-stone-400 shrink-0" />
-                    <span className="font-semibold text-stone-900 font-mono text-[11px]">
-                      {change.newDisplayValue}
-                    </span>
+                <div
+                  key={change.$id}
+                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4"
+                >
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-stone-700 uppercase tracking-wide">
+                      {change.field.replace('_', ' ')}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="line-through text-stone-500 font-sans text-xs">
+                        {change.oldDisplayValue || 'Initial'}
+                      </span>
+                      <ArrowRight size={11} className="text-stone-400 shrink-0" />
+                      <span className="font-bold text-stone-900 font-sans text-xs">
+                        {change.newDisplayValue}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-stone-500 font-mono text-[10px] shrink-0">
-                    <span className="bg-stone-100 border border-stone-200 px-1.5 py-0.5 rounded text-stone-700">
+
+                  <div className="flex items-center gap-2 text-stone-600 font-mono text-[11px] shrink-0 pt-1 sm:pt-0">
+                    <span className="bg-stone-100 border border-stone-200 px-2 py-0.5 rounded text-stone-800 font-medium">
                       Revision {change.revision}
                     </span>
                     <span>{new Date(change.createdAt).toLocaleTimeString()}</span>
@@ -429,7 +449,7 @@ export default function EventWorkspacePage() {
       </main>
 
       {/* Footer credit */}
-      <footer className="mt-auto py-6 border-t border-stone-200 text-center text-[11px] text-stone-400">
+      <footer className="mt-auto py-6 border-t border-stone-200 text-center text-[11px] text-stone-500">
         Ripple · Built with Appwrite TablesDB for the Appwrite Databases Hackathon
       </footer>
 
@@ -490,10 +510,7 @@ export default function EventWorkspacePage() {
       {isCreateEventOpen && (
         <CreateEventModal
           onClose={() => setIsCreateEventOpen(false)}
-          onSuccess={(newEventId) => {
-            setIsCreateEventOpen(false);
-            router.push(`/events/${newEventId}`);
-          }}
+          onSuccess={(id) => router.push(`/events/${id}`)}
         />
       )}
     </div>

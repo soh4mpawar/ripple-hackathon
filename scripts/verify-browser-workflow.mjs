@@ -170,8 +170,8 @@ async function runBrowserVerification() {
     console.log('✓ Verified: Suggested text replaces ALL conflicting facts (both time and venue).');
 
     // Apply correction (creates Version 2)
-    console.log('[Step 3] Clicking "Apply Correction" button...');
-    const applyBtn = await page.waitForSelector('button ::-p-text(Apply Correction)', { timeout: 10000 });
+    console.log('[Step 3] Clicking "Save corrected version" button...');
+    const applyBtn = await page.waitForSelector('button[data-testid="save-corrected-btn"], button ::-p-text(Save corrected version), button ::-p-text(Apply Correction)', { timeout: 10000 });
     await applyBtn.click();
 
     // Wait for drawer to update with v2
@@ -207,7 +207,7 @@ async function runBrowserVerification() {
     const drawerDetails = await page.evaluate(() => {
       const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
       const text = drawer ? drawer.innerText : '';
-      const sourcePre = drawer?.querySelector('pre')?.textContent || '';
+      const sourcePre = drawer?.querySelector('[data-testid="saved-source-text"], .whitespace-pre-wrap, pre')?.textContent || '';
       return { text, sourcePre };
     });
 
@@ -457,7 +457,7 @@ async function runBrowserVerification() {
     const postReloadDetails = await page.evaluate(() => {
       const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
       const text = drawer ? drawer.innerText : '';
-      const sourcePre = drawer?.querySelector('pre')?.textContent || '';
+      const sourcePre = drawer?.querySelector('[data-testid="saved-source-text"], .whitespace-pre-wrap, pre')?.textContent || '';
       return { text, sourcePre };
     });
 

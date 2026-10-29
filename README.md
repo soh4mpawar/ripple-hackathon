@@ -11,25 +11,20 @@ Ripple is a production-grade web application built for the **Appwrite Databases 
 
 ## 📸 Interface & Workflow Walkthrough
 
-| 1. Editorial Landing Page | 2. Initial Workspace & Impact Map |
+| 1. Editorial Landing Page | 2. Desktop Workspace & Dependency Routing |
 | :---: | :---: |
-| ![Editorial Landing Page](docs/screenshots/01_landing_page.png) | ![Initial Workspace](docs/screenshots/02_workspace_initial.png) |
-| *Composed opening with dependency model and 3-step walkthrough.* | *Official details strip, compact status counter & Impact Map.* |
+| ![Editorial Landing Page](docs/screenshots/01_landing_page.png) | ![Desktop Workspace](docs/screenshots/02_desktop_workspace.png) |
+| *Composed opening with live preview, clear counts, and 3-step walkthrough.* | *Official details strip, 4 outdated announcements, and "Where details appear" map.* |
 
-| 3. Real-Time Outdated Detection (Revision 2) | 4. Side-by-Side Correction Inspector |
+| 3. Side-by-Side Correction Inspector | 4. Mobile List View (Default on Mobile) |
 | :---: | :---: |
-| ![Conflict State](docs/screenshots/03_workspace_conflict.png) | ![Correction Inspector](docs/screenshots/04_correction_inspector.png) |
-| *Visual dependency map highlights outdated announcements.* | *Diff comparison highlighting exact changes before saving Version 2.* |
+| ![Correction Inspector](docs/screenshots/03_correction_inspector.png) | ![Mobile List](docs/screenshots/04_mobile_list.png) |
+| *Visual diff preview highlighting changed venue & time with 15px editable draft.* | *Defaults to List mode on mobile with wrapped titles and comfortable touch targets.* |
 
-| 5. Explicit Claims Review & Evidence Validation | 6. Mobile Responsive Workspace |
+| 5. Stacked Mobile Change History | 6. High-Resolution Poster Upload & Storage |
 | :---: | :---: |
-| ![Claims Review](docs/screenshots/05_claims_review.png) | ![Mobile Workspace](docs/screenshots/06_mobile_workspace.png) |
-| *Proposed claims banner requires explicit confirmation.* | *Default list mode and compact layout for mobile organizers.* |
-
-| 7. Poster Upload & Manual Review | 8. Preserved Version Audit Trail |
-| :---: | :---: |
-| ![Poster Upload](docs/screenshots/04_poster_upload.png) | ![Version History](docs/screenshots/05_version_history.png) |
-| *Appwrite Storage upload with manual claim entry & review.* | *Full audit trail preserving historical source snapshots.* |
+| ![Mobile History](docs/screenshots/05_mobile_history.png) | ![Poster Upload](docs/screenshots/04_poster_upload.png) |
+| *Cleanly stacked field, old/new value, and timestamp lines without cramping.* | *Appwrite Storage upload with manual claim entry & organizer review.* |
 
 ---
 

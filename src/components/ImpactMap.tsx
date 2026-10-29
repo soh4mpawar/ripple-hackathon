@@ -114,21 +114,21 @@ export function ImpactMap({
       <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-stone-100">
         <div>
           <h2 className="text-xs font-bold text-stone-900 tracking-tight uppercase">
-            Impact Map · Dependency Routing
+            Where details appear
           </h2>
-          <p className="text-[11px] text-stone-500 mt-0.5">
-            Connections show official details repeated across announcements. Outdated connections are highlighted in red.
+          <p className="text-[11px] text-stone-600 mt-0.5">
+            Connections show where official details appear in your materials. Outdated connections are highlighted in red.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 text-[11px] font-medium text-stone-600">
+        <div className="flex items-center gap-3 text-[11px] font-medium text-stone-700">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-xs bg-current-600 inline-block" />
-            <span>Matches official</span>
+            <span>Matches official details</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-xs bg-conflict-600 inline-block" />
-            <span className="font-semibold text-conflict-800">Needs update</span>
+            <span className="font-semibold text-conflict-800">Outdated</span>
           </div>
         </div>
       </div>
@@ -136,7 +136,7 @@ export function ImpactMap({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start relative z-10">
         {/* Left Column: Official Details */}
         <div className="md:col-span-4 space-y-3">
-          <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-1">
+          <div className="text-[10px] font-bold text-stone-600 uppercase tracking-wider px-1">
             Official Details
           </div>
           {facts.map((fact) => (
@@ -149,7 +149,7 @@ export function ImpactMap({
             >
               <div className="flex items-center gap-2 mb-1">
                 {fieldIcons[fact.field]}
-                <span className="text-[11px] font-semibold text-stone-700">
+                <span className="text-[11px] font-semibold text-stone-800">
                   {fieldLabels[fact.field] || fact.field}
                 </span>
               </div>
@@ -167,11 +167,11 @@ export function ImpactMap({
 
         {/* Right Column: Connected Materials */}
         <div className="md:col-span-5 space-y-2.5">
-          <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-1">
+          <div className="text-[10px] font-bold text-stone-600 uppercase tracking-wider px-1">
             Connected Materials ({materials.length})
           </div>
           {materials.length === 0 ? (
-            <div className="p-6 text-center border border-dashed border-stone-200 rounded-md text-stone-500 text-xs">
+            <div className="p-6 text-center border border-dashed border-stone-200 rounded-md text-stone-600 text-xs">
               No materials added yet.
             </div>
           ) : (
@@ -210,13 +210,13 @@ export function ImpactMap({
                   />
 
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       {mat.kind === 'image' ? (
-                        <ImageIcon size={13} className="text-stone-500 shrink-0" />
+                        <ImageIcon size={14} className="text-stone-600 shrink-0" />
                       ) : (
-                        <FileText size={13} className="text-stone-500 shrink-0" />
+                        <FileText size={14} className="text-stone-600 shrink-0" />
                       )}
-                      <h3 className="text-xs font-semibold text-stone-900 truncate group-hover:text-brand-700 transition-colors">
+                      <h3 className="text-xs font-semibold text-stone-900 break-words group-hover:text-brand-700 transition-colors">
                         {mat.title}
                       </h3>
                     </div>
@@ -230,7 +230,7 @@ export function ImpactMap({
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] text-stone-500 pl-5">
+                  <div className="flex items-center justify-between text-[11px] text-stone-600 pl-5">
                     <span>Version {mat.version}</span>
                     <span>
                       {summary?.confirmedCount || 0} reviewed claim{summary?.confirmedCount !== 1 ? 's' : ''}

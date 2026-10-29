@@ -35,11 +35,11 @@ export function OfficialDetailsStrip({
             Official Details
           </span>
           <span className="text-stone-300">•</span>
-          <span className="text-stone-600 font-mono text-[11px]">
+          <span className="text-stone-700 font-mono text-[11px]">
             {currentRevision === 1 ? 'Initial Details · Version 1' : `Updated Details · Version ${currentRevision}`}
           </span>
           <span className="text-stone-300">•</span>
-          <span className="text-stone-500 font-mono text-[11px]">
+          <span className="text-stone-600 font-mono text-[11px]">
             {timezone}
           </span>
         </div>
@@ -48,7 +48,7 @@ export function OfficialDetailsStrip({
           <button
             onClick={onDemoChangeClick}
             type="button"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-stone-100 text-stone-800 border border-stone-300 hover:bg-stone-200/80 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-md bg-stone-100 text-stone-800 border border-stone-300 hover:bg-stone-200/80 transition-colors"
             title="Simulate venue and time change for demonstration"
           >
             <Play size={10} className="text-brand-600 fill-brand-600" />
@@ -58,9 +58,9 @@ export function OfficialDetailsStrip({
           <button
             onClick={onEditClick}
             type="button"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-white text-stone-700 border border-stone-200 hover:bg-stone-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-md bg-white text-stone-800 border border-stone-300 hover:bg-stone-50 transition-colors"
           >
-            <Edit2 size={11} className="text-stone-500" />
+            <Edit2 size={11} className="text-stone-600" />
             Edit details
           </button>
         </div>
@@ -70,9 +70,9 @@ export function OfficialDetailsStrip({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-200 text-xs">
         {/* Date */}
         <div className="p-3.5 flex items-start gap-2.5">
-          <Calendar size={14} className="text-stone-400 shrink-0 mt-0.5" />
+          <Calendar size={15} className="text-stone-500 shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <span className="block text-[10px] font-semibold text-stone-500 uppercase tracking-wide">
+            <span className="block text-[10px] font-semibold text-stone-600 uppercase tracking-wide">
               Date
             </span>
             <span className="block text-sm font-semibold text-stone-900 mt-0.5 truncate" title={eventDate}>
@@ -83,9 +83,9 @@ export function OfficialDetailsStrip({
 
         {/* Start Time */}
         <div className="p-3.5 flex items-start gap-2.5">
-          <Clock size={14} className="text-stone-400 shrink-0 mt-0.5" />
+          <Clock size={15} className="text-stone-500 shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <span className="block text-[10px] font-semibold text-stone-500 uppercase tracking-wide">
+            <span className="block text-[10px] font-semibold text-stone-600 uppercase tracking-wide">
               Start Time
             </span>
             <span className="block text-sm font-semibold text-stone-900 mt-0.5 truncate" title={startTime}>
@@ -96,9 +96,9 @@ export function OfficialDetailsStrip({
 
         {/* Venue */}
         <div className="p-3.5 flex items-start gap-2.5">
-          <MapPin size={14} className="text-stone-400 shrink-0 mt-0.5" />
+          <MapPin size={15} className="text-stone-500 shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <span className="block text-[10px] font-semibold text-stone-500 uppercase tracking-wide">
+            <span className="block text-[10px] font-semibold text-stone-600 uppercase tracking-wide">
               Venue
             </span>
             <span className="block text-sm font-semibold text-stone-900 mt-0.5 truncate" title={venue}>
@@ -109,9 +109,9 @@ export function OfficialDetailsStrip({
 
         {/* Registration Deadline */}
         <div className="p-3.5 flex items-start gap-2.5">
-          <AlertCircle size={14} className="text-stone-400 shrink-0 mt-0.5" />
+          <AlertCircle size={15} className="text-stone-500 shrink-0 mt-0.5" />
           <div className="min-w-0">
-            <span className="block text-[10px] font-semibold text-stone-500 uppercase tracking-wide">
+            <span className="block text-[10px] font-semibold text-stone-600 uppercase tracking-wide">
               Registration Deadline
             </span>
             <span className="block text-sm font-semibold text-stone-900 mt-0.5 truncate" title={deadline}>

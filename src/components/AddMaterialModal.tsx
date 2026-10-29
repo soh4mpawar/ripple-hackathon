@@ -176,7 +176,7 @@ export function AddMaterialModal({ eventId, onClose, onSuccess }: AddMaterialMod
                 placeholder="Paste announcement text, volunteer instructions, or email draft..."
                 value={sourceText}
                 onChange={(e) => setSourceText(e.target.value)}
-                className="w-full text-xs rounded-md border border-stone-300 p-2.5 font-mono focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+                className="w-full text-[15px] font-sans rounded-md border border-stone-300 p-3 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white leading-relaxed text-stone-900"
                 required
               />
               <p className="text-[11px] text-stone-500 mt-1">
