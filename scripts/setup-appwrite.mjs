@@ -240,6 +240,18 @@ async function runSetup() {
     await addStringCol('materials', 'updatedAt', 64, true);
   }
 
+  // 3b. material_versions
+  const newMaterialVersions = await ensureTable('material_versions', 'Material Versions');
+  if (newMaterialVersions) {
+    await addStringCol('material_versions', 'ownerId', 36, true);
+    await addStringCol('material_versions', 'eventId', 36, true);
+    await addStringCol('material_versions', 'materialId', 36, true);
+    await addIntegerCol('material_versions', 'version', true);
+    await addTextCol('material_versions', 'sourceText', false);
+    await addStringCol('material_versions', 'storageFileId', 64, false);
+    await addStringCol('material_versions', 'createdAt', 64, true);
+  }
+
   // 4. claims
   const newClaims = await ensureTable('claims', 'Claims');
   if (newClaims) {

@@ -172,6 +172,7 @@ export function MaterialDetailPanel({
         body: JSON.stringify({
           correctedText: editableCorrection,
           eventRevision: currentEventRevision,
+          expectedMaterialVersion: material.version,
           confirmedClaims: updatedClaims,
           note: `Applied correction to align with official details at Revision ${currentEventRevision}.`,
         }),

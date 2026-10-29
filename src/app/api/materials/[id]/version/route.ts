@@ -14,6 +14,7 @@ const ApplyCorrectionSchema = z.object({
   correctedText: z.string().optional(),
   replacementFileId: z.string().optional(),
   eventRevision: z.number().int().positive(),
+  expectedMaterialVersion: z.number().int().positive().optional(),
   confirmedClaims: z
     .array(
       z.object({
@@ -40,7 +41,31 @@ export async function POST(
 
     const material = await dbAdapter.getRow<MaterialRow>('materials', materialId);
     if (!material || material.ownerId !== user.id) {
-      return NextResponse.json({ error: 'Material not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Material not found or unauthorized' }, { status: 404 });
+    }
+
+    // Verify parent event revision - reject stale suggestions server-side
+    const event = await dbAdapter.getRow<any>('events', material.eventId);
+    if (!event || event.ownerId !== user.id) {
+      return NextResponse.json({ error: 'Parent event not found or unauthorized' }, { status: 404 });
+    }
+
+    if (event.currentRevision !== validated.eventRevision) {
+      return NextResponse.json(
+        {
+          error: `Stale correction rejected: Event revision is currently Rev ${event.currentRevision}, but suggestion was generated for Rev ${validated.eventRevision}. Please refresh and regenerate corrections.`,
+        },
+        { status: 409 }
+      );
+    }
+
+    if (validated.expectedMaterialVersion && material.version !== validated.expectedMaterialVersion) {
+      return NextResponse.json(
+        {
+          error: `Stale correction rejected: Material is at Version ${material.version}, but expected Version ${validated.expectedMaterialVersion}.`,
+        },
+        { status: 409 }
+      );
     }
 
     const newVersion = material.version + 1;

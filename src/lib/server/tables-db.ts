@@ -43,6 +43,17 @@ export interface MaterialRow {
   updatedAt: string;
 }
 
+export interface MaterialVersionRow {
+  $id: string;
+  ownerId: string;
+  eventId: string;
+  materialId: string;
+  version: number;
+  sourceText?: string | null;
+  storageFileId?: string | null;
+  createdAt: string;
+}
+
 export interface ClaimRow {
   $id: string;
   ownerId: string;
@@ -501,7 +512,7 @@ export async function createMaterial(
   const materialId = ID.unique();
   const permissions = getRowPermissions(ownerId);
 
-  return await dbAdapter.createRow<MaterialRow>(
+  const material = await dbAdapter.createRow<MaterialRow>(
     'materials',
     materialId,
     {
@@ -519,6 +530,24 @@ export async function createMaterial(
     },
     permissions
   );
+
+  // Snapshot initial version 1 in material_versions
+  await dbAdapter.createRow<MaterialVersionRow>(
+    'material_versions',
+    ID.unique(),
+    {
+      ownerId,
+      eventId,
+      materialId,
+      version: 1,
+      sourceText: sourceText || null,
+      storageFileId: storageFileId || null,
+      createdAt: now,
+    },
+    permissions
+  );
+
+  return material;
 }
 
 export async function updateMaterialStatus(
@@ -559,7 +588,25 @@ export async function createNewMaterialVersion(
 
   const nextVersion = material.version + 1;
   const now = new Date().toISOString();
+  const permissions = getRowPermissions(ownerId);
 
+  // 1. Snapshot the new version in material_versions so historical copy is never lost
+  await dbAdapter.createRow<MaterialVersionRow>(
+    'material_versions',
+    ID.unique(),
+    {
+      ownerId,
+      eventId: material.eventId,
+      materialId,
+      version: nextVersion,
+      sourceText: newSourceText ?? material.sourceText,
+      storageFileId: newStorageFileId ?? material.storageFileId,
+      createdAt: now,
+    },
+    permissions
+  );
+
+  // 2. Update active version on material
   return await dbAdapter.updateRow<MaterialRow>(
     'materials',
     materialId,
@@ -571,8 +618,24 @@ export async function createNewMaterialVersion(
       reviewStatus: 'unreviewed',
       updatedAt: now,
     },
-    getRowPermissions(ownerId)
+    permissions
   );
+}
+
+export async function listMaterialVersions(
+  ownerId: string,
+  materialId: string
+): Promise<MaterialVersionRow[]> {
+  const material = await dbAdapter.getRow<MaterialRow>('materials', materialId);
+  if (!material || material.ownerId !== ownerId) {
+    throw new Error('Material not found or unauthorized');
+  }
+
+  return await dbAdapter.listRows<MaterialVersionRow>('material_versions', [
+    Query.equal('ownerId', ownerId),
+    Query.equal('materialId', materialId),
+    Query.orderAsc('version'),
+  ]);
 }
 
 export async function listClaims(
@@ -609,6 +672,15 @@ export async function createClaim(
     ambiguityReason?: string | null;
   }
 ): Promise<ClaimRow> {
+  // Strict parent-child ownership verification
+  const material = await dbAdapter.getRow<MaterialRow>('materials', materialId);
+  if (!material || material.ownerId !== ownerId || material.eventId !== eventId) {
+    throw new Error('Material not found, wrong event, or unauthorized');
+  }
+  if (material.version < materialVersion) {
+    throw new Error('Invalid material version specified');
+  }
+
   const norm = claim.normalizedValue || normalizeFieldValue(claim.field, claim.rawValue);
   const claimId = ID.unique();
 
@@ -692,6 +764,11 @@ export async function recordResolution(
 ): Promise<ResolutionRow> {
   const event = await getEventById(eventId, ownerId);
   if (!event) throw new Error('Event not found or unauthorized');
+
+  const material = await dbAdapter.getRow<MaterialRow>('materials', materialId);
+  if (!material || material.ownerId !== ownerId || material.eventId !== eventId) {
+    throw new Error('Material not found, wrong event, or unauthorized');
+  }
 
   const resolutionId = ID.unique();
   const now = new Date().toISOString();

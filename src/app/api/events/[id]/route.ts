@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAuthUser } from '@/lib/server/appwrite';
+import { Query } from 'node-appwrite';
 import {
   getEventById,
   getEventFacts,
@@ -7,6 +8,7 @@ import {
   listClaims,
   listEventChanges,
   listResolutions,
+  dbAdapter,
 } from '@/lib/server/tables-db';
 import { compareMaterialClaims, OfficialFact, Claim } from '@/lib/comparison';
 
@@ -23,13 +25,17 @@ export async function GET(
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     }
 
-    const [factsRows, materialsRows, claimsRows, changesRows, resolutionsRows] =
+    const [factsRows, materialsRows, claimsRows, changesRows, resolutionsRows, versionsRows] =
       await Promise.all([
         getEventFacts(eventId, user.id),
         listEventMaterials(eventId, user.id),
         listClaims(eventId, user.id),
         listEventChanges(eventId, user.id),
         listResolutions(eventId, user.id),
+        dbAdapter.listRows<any>('material_versions', [
+          Query.equal('ownerId', user.id),
+          Query.equal('eventId', eventId),
+        ]).catch(() => []),
       ]);
 
     // Format facts for comparison engine
@@ -86,6 +92,7 @@ export async function GET(
       claims: claimsRows,
       changes: changesRows,
       resolutions: resolutionsRows,
+      versions: versionsRows,
       summaries: summariesRecord,
       stats: {
         totalMaterials: materialsRows.length,
