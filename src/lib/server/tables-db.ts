@@ -107,47 +107,28 @@ function getRowPermissions(ownerId: string) {
 }
 
 /**
- * Helper to execute database operations using TablesDB with automatic fallback
- * to Databases service if TablesDB is not supported on the target Appwrite instance.
+ * TablesDB Service Adapter: calls Appwrite TablesDB directly without silent fallbacks.
+ * Surfaces authentic SDK, permission, and schema errors.
  */
 class TablesDBAdapter {
   private admin = createAdminClient();
 
   async listRows<T = any>(tableId: string, queries: string[] = []): Promise<T[]> {
-    try {
-      const res = await this.admin.tablesDB.listRows({
-        databaseId: DATABASE_ID,
-        tableId,
-        queries,
-      });
-      return (res.rows || []) as unknown as T[];
-    } catch {
-      // Fallback to Databases service
-      const res = await this.admin.databases.listDocuments(
-        DATABASE_ID,
-        tableId,
-        queries
-      );
-      return (res.documents || []) as unknown as T[];
-    }
+    const res = await this.admin.tablesDB.listRows({
+      databaseId: DATABASE_ID,
+      tableId,
+      queries,
+    });
+    return (res.rows || []) as unknown as T[];
   }
 
   async getRow<T = any>(tableId: string, rowId: string): Promise<T> {
-    try {
-      const res = await this.admin.tablesDB.getRow({
-        databaseId: DATABASE_ID,
-        tableId,
-        rowId,
-      });
-      return res as unknown as T;
-    } catch {
-      const res = await this.admin.databases.getDocument(
-        DATABASE_ID,
-        tableId,
-        rowId
-      );
-      return res as unknown as T;
-    }
+    const res = await this.admin.tablesDB.getRow({
+      databaseId: DATABASE_ID,
+      tableId,
+      rowId,
+    });
+    return res as unknown as T;
   }
 
   async createRow<T = any>(
@@ -157,26 +138,15 @@ class TablesDBAdapter {
     permissions?: string[],
     transactionId?: string | null
   ): Promise<T> {
-    try {
-      const res = await this.admin.tablesDB.createRow({
-        databaseId: DATABASE_ID,
-        tableId,
-        rowId,
-        data,
-        permissions,
-        transactionId: transactionId || undefined,
-      });
-      return res as unknown as T;
-    } catch {
-      const res = await this.admin.databases.createDocument(
-        DATABASE_ID,
-        tableId,
-        rowId,
-        data,
-        permissions
-      );
-      return res as unknown as T;
-    }
+    const res = await this.admin.tablesDB.createRow({
+      databaseId: DATABASE_ID,
+      tableId,
+      rowId,
+      data,
+      permissions,
+      transactionId: transactionId || undefined,
+    });
+    return res as unknown as T;
   }
 
   async updateRow<T = any>(
@@ -186,26 +156,15 @@ class TablesDBAdapter {
     permissions?: string[],
     transactionId?: string | null
   ): Promise<T> {
-    try {
-      const res = await this.admin.tablesDB.updateRow({
-        databaseId: DATABASE_ID,
-        tableId,
-        rowId,
-        data,
-        permissions,
-        transactionId: transactionId || undefined,
-      });
-      return res as unknown as T;
-    } catch {
-      const res = await this.admin.databases.updateDocument(
-        DATABASE_ID,
-        tableId,
-        rowId,
-        data,
-        permissions
-      );
-      return res as unknown as T;
-    }
+    const res = await this.admin.tablesDB.updateRow({
+      databaseId: DATABASE_ID,
+      tableId,
+      rowId,
+      data,
+      permissions,
+      transactionId: transactionId || undefined,
+    });
+    return res as unknown as T;
   }
 
   async deleteRow(
@@ -213,43 +172,31 @@ class TablesDBAdapter {
     rowId: string,
     transactionId?: string | null
   ): Promise<void> {
-    try {
-      await this.admin.tablesDB.deleteRow({
-        databaseId: DATABASE_ID,
-        tableId,
-        rowId,
-        transactionId: transactionId || undefined,
-      });
-    } catch {
-      await this.admin.databases.deleteDocument(DATABASE_ID, tableId, rowId);
-    }
+    await this.admin.tablesDB.deleteRow({
+      databaseId: DATABASE_ID,
+      tableId,
+      rowId,
+      transactionId: transactionId || undefined,
+    });
   }
 
   /**
-   * Starts a transaction if supported, returning transaction ID or null.
+   * Starts a transaction, returning the unique transaction ID.
    */
-  async startTransaction(): Promise<string | null> {
-    try {
-      const tx = await this.admin.tablesDB.createTransaction({ ttl: 60 });
-      return tx.$id;
-    } catch {
-      return null;
-    }
+  async startTransaction(): Promise<string> {
+    const tx = await this.admin.tablesDB.createTransaction({ ttl: 60 });
+    return tx.$id;
   }
 
   /**
-   * Finalizes a transaction.
+   * Finalizes a transaction by committing or rolling back.
    */
   async endTransaction(transactionId: string, commit: boolean): Promise<void> {
-    try {
-      await this.admin.tablesDB.updateTransaction({
-        transactionId,
-        commit,
-        rollback: !commit,
-      });
-    } catch {
-      // Ignore if transactions not supported
-    }
+    await this.admin.tablesDB.updateTransaction({
+      transactionId,
+      commit,
+      rollback: !commit,
+    });
   }
 }
 

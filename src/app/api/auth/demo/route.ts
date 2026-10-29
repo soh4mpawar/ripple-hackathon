@@ -1,30 +1,24 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { Client, Account } from 'node-appwrite';
-import { SESSION_COOKIE_NAME } from '@/lib/server/appwrite';
+import { ID } from 'node-appwrite';
+import { createAdminClient, SESSION_COOKIE_NAME } from '@/lib/server/appwrite';
 import { seedSampleEvent } from '@/lib/server/sample-event';
 
 export async function POST() {
   try {
-    const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
-    const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || '';
+    const admin = createAdminClient();
+    const userId = ID.unique();
 
-    if (!projectId) {
-      return NextResponse.json(
-        { error: 'Appwrite Project ID is not configured in .env.local' },
-        { status: 500 }
-      );
-    }
+    // Create an isolated demo user account using admin client
+    await admin.users.create({
+      userId,
+      name: 'Demo Organizer',
+    });
 
-    // Create an isolated anonymous session on Appwrite
-    const client = new Client()
-      .setEndpoint(endpoint)
-      .setProject(projectId);
+    // Create an immediately usable session for this demo user
+    const session = await admin.users.createSession({ userId });
 
-    const account = new Account(client);
-    const session = await account.createAnonymousSession();
-
-    // Set HTTP-only session cookie
+    // Set HTTP-only session cookie with the session secret
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, session.secret, {
       path: '/',
@@ -35,11 +29,11 @@ export async function POST() {
     });
 
     // Seed isolated sample event for this distinct user ID
-    const sampleEventId = await seedSampleEvent(session.userId);
+    const sampleEventId = await seedSampleEvent(userId);
 
     return NextResponse.json({
       success: true,
-      userId: session.userId,
+      userId,
       eventId: sampleEventId,
     });
   } catch (error: any) {
