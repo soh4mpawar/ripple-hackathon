@@ -13,6 +13,8 @@ import { z } from 'zod';
 import { OfficialField, normalizeFieldValue, validateClaimIntegrity } from '@/lib/comparison';
 import { extractClaimsFromMaterial } from '@/lib/server/ai-extractor';
 
+export const maxDuration = 60;
+
 const ApplyCorrectionSchema = z.object({
   correctedText: z.string().optional(),
   replacementFileId: z.string().optional(),
@@ -93,16 +95,30 @@ export async function POST(
         if (!validation.valid) {
           return NextResponse.json({ error: validation.error }, { status: 400 });
         }
-
-        await createClaim(user.id, material.eventId, materialId, newVersion, {
-          field: c.field as OfficialField,
-          rawValue: c.rawValue,
-          normalizedValue: normalizeFieldValue(c.field, c.rawValue),
-          evidenceQuote: c.evidenceQuote,
-          evidenceLocation: c.evidenceLocation || 'Corrected text',
-          reviewState: 'confirmed',
-        });
       }
+
+      await Promise.all(
+        validated.confirmedClaims.map((c) =>
+          createClaim(user.id, material.eventId, materialId, newVersion, {
+            field: c.field as OfficialField,
+            rawValue: c.rawValue,
+            normalizedValue: normalizeFieldValue(c.field, c.rawValue),
+            evidenceQuote: c.evidenceQuote,
+            evidenceLocation: c.evidenceLocation || 'Corrected text',
+            reviewState: 'confirmed',
+          })
+        )
+      );
+
+      await recordResolution(
+        user.id,
+        material.eventId,
+        materialId,
+        newVersion,
+        validated.eventRevision,
+        `Applied correction (Version ${newVersion})`,
+        validated.note || 'Material revised and claims reconfirmed to match official details.'
+      );
     } else if (validated.correctedText) {
       // Automatically extract claims from the actual saved source text
       const extraction = await extractClaimsFromMaterial({
@@ -111,39 +127,43 @@ export async function POST(
         eventTimezone: event.timezone,
       });
 
-      for (const extractedClaim of extraction.claims) {
-        const norm = extractedClaim.proposedNormalizedValue || normalizeFieldValue(extractedClaim.field, extractedClaim.rawValue);
+      if (extraction.claims.length > 0) {
+        await Promise.all(
+          extraction.claims.map((extractedClaim) => {
+            const norm =
+              extractedClaim.proposedNormalizedValue ||
+              normalizeFieldValue(extractedClaim.field, extractedClaim.rawValue);
 
-        // Newly extracted claims MUST remain proposed until the organizer explicitly confirms them.
-        // Ambiguous claims MUST remain needs_clarification.
-        const reviewState = extractedClaim.needsClarification
-          ? 'needs_clarification'
-          : 'proposed';
+            const reviewState = extractedClaim.needsClarification
+              ? 'needs_clarification'
+              : 'proposed';
 
-        await createClaim(user.id, material.eventId, materialId, newVersion, {
-          field: extractedClaim.field,
-          rawValue: extractedClaim.rawValue,
-          normalizedValue: norm,
-          evidenceQuote: extractedClaim.evidenceQuote,
-          evidenceLocation: extractedClaim.evidenceLocation || 'Corrected text',
-          reviewState,
-          ambiguityReason: extractedClaim.ambiguityReason,
-        });
+            return createClaim(user.id, material.eventId, materialId, newVersion, {
+              field: extractedClaim.field,
+              rawValue: extractedClaim.rawValue,
+              normalizedValue: norm,
+              evidenceQuote: extractedClaim.evidenceQuote,
+              evidenceLocation: extractedClaim.evidenceLocation || 'Corrected text',
+              reviewState,
+              ambiguityReason: extractedClaim.ambiguityReason,
+            });
+          })
+        );
       }
 
-      await updateMaterialStatus(user.id, materialId, 'ready', 'unreviewed');
+      await Promise.all([
+        updateMaterialStatus(user.id, materialId, 'ready', 'unreviewed'),
+        recordResolution(
+          user.id,
+          material.eventId,
+          materialId,
+          newVersion,
+          validated.eventRevision,
+          `Applied correction (Version ${newVersion})`,
+          validated.note || 'Material revised and claims reconfirmed to match official details.'
+        ),
+      ]);
     }
-
-    // Record resolution audit
-    await recordResolution(
-      user.id,
-      material.eventId,
-      materialId,
-      newVersion,
-      validated.eventRevision,
-      `Applied correction (Version ${newVersion})`,
-      validated.note || 'Material revised and claims reconfirmed to match official details.'
-    );
 
     return NextResponse.json({
       success: true,

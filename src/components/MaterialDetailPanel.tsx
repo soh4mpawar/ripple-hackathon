@@ -97,10 +97,17 @@ export function MaterialDetailPanel({
       if (res.ok) {
         setEditingClaimId(null);
         setEditClaimError(null);
-        await onRefresh();
+        setIsUpdatingClaim(false);
+        onRefresh();
       } else {
-        const data = await res.json();
-        setEditClaimError(data.error || 'Failed to update claim');
+        let errMessage = 'Failed to update claim';
+        try {
+          const data = await res.json();
+          errMessage = data.error || errMessage;
+        } catch {
+          errMessage = `Server error (${res.status}).`;
+        }
+        setEditClaimError(errMessage);
       }
     } catch (err: any) {
       setEditClaimError(err.message || 'Error saving edited claim');
@@ -189,10 +196,17 @@ export function MaterialDetailPanel({
         setNewClaimQuote('');
         setShowAddClaim(false);
         setClaimError(null);
-        await onRefresh();
+        setIsSubmittingClaim(false);
+        onRefresh();
       } else {
-        const data = await res.json();
-        setClaimError(data.error || 'Failed to add claim');
+        let errMessage = 'Failed to add claim';
+        try {
+          const data = await res.json();
+          errMessage = data.error || errMessage;
+        } catch {
+          errMessage = `Server error (${res.status}).`;
+        }
+        setClaimError(errMessage);
       }
     } catch (err: any) {
       setClaimError(err.message || 'Error adding claim');
@@ -218,15 +232,24 @@ export function MaterialDetailPanel({
           expectedMaterialVersion: material.version,
           note: `Applied correction to align with official details at Revision ${currentEventRevision}.`,
         }),
+        signal: AbortSignal.timeout(30000),
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to apply correction');
+        let errMessage = 'Failed to apply correction';
+        try {
+          const data = await res.json();
+          errMessage = data.error || errMessage;
+        } catch {
+          errMessage = `Server error (${res.status}). Please try again.`;
+        }
+        throw new Error(errMessage);
       }
 
-      await onRefresh();
+      // Immediately switch tabs and clear submitting state so the UI is non-blocking
       setActiveTab('claims');
+      setIsApplyingCorrection(false);
+      onRefresh();
     } catch (err: any) {
       setCorrectionError(err.message || 'Error creating new version');
     } finally {
@@ -258,10 +281,17 @@ export function MaterialDetailPanel({
         setExternalError(null);
         setExternalSuccess(true);
         setTimeout(() => setExternalSuccess(false), 3000);
-        await onRefresh();
+        setIsRecordingExternal(false);
+        onRefresh();
       } else {
-        const data = await res.json();
-        setExternalError(data.error || 'Failed to record external acknowledgment');
+        let errMessage = 'Failed to record external acknowledgment';
+        try {
+          const data = await res.json();
+          errMessage = data.error || errMessage;
+        } catch {
+          errMessage = `Server error (${res.status}).`;
+        }
+        setExternalError(errMessage);
       }
     } catch (err: any) {
       setExternalError(err.message || 'Error recording external acknowledgment');

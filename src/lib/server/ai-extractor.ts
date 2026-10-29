@@ -142,6 +142,7 @@ export async function extractClaimsFromMaterial(params: {
         temperature: 0.1,
         response_format: { type: 'json_object' },
       }),
+      signal: AbortSignal.timeout(6000),
     });
 
     if (!response.ok) {
