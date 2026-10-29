@@ -125,6 +125,12 @@ export default function EventWorkspacePage() {
     loadData();
   }, [eventId]);
 
+  function handleMaterialUpdated(updatedMaterial: MaterialRow) {
+    setMaterials((prev) =>
+      prev.map((m) => (m.$id === updatedMaterial.$id ? { ...m, ...updatedMaterial } : m))
+    );
+  }
+
   const selectedMaterial = materials.find((m) => m.$id === selectedMaterialId);
   const selectedSummary = selectedMaterialId ? summaries[selectedMaterialId] : undefined;
 
@@ -456,6 +462,7 @@ export default function EventWorkspacePage() {
       {/* Detail Inspector Drawer / Panel */}
       {selectedMaterial && (
         <MaterialDetailPanel
+          key={`${selectedMaterial.$id}-v${selectedMaterial.version}`}
           material={selectedMaterial}
           summary={selectedSummary}
           claims={formattedClaims}
@@ -466,6 +473,7 @@ export default function EventWorkspacePage() {
           versions={versions}
           onClose={() => setSelectedMaterialId(null)}
           onRefresh={loadData}
+          onMaterialUpdated={handleMaterialUpdated}
         />
       )}
 

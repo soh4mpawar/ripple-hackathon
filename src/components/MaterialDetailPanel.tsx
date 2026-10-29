@@ -41,6 +41,7 @@ interface MaterialDetailPanelProps {
   versions: any[];
   onClose: () => void;
   onRefresh: () => void;
+  onMaterialUpdated?: (updatedMaterial: MaterialRow) => void;
 }
 
 export function MaterialDetailPanel({
@@ -54,6 +55,7 @@ export function MaterialDetailPanel({
   versions,
   onClose,
   onRefresh,
+  onMaterialUpdated,
 }: MaterialDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<'claims' | 'corrections' | 'history' | 'external'>('claims');
 
@@ -244,6 +246,11 @@ export function MaterialDetailPanel({
           errMessage = `Server error (${res.status}). Please try again.`;
         }
         throw new Error(errMessage);
+      }
+
+      const data = await res.json();
+      if (data.material && onMaterialUpdated) {
+        onMaterialUpdated(data.material);
       }
 
       // Immediately switch tabs and clear submitting state so the UI is non-blocking
