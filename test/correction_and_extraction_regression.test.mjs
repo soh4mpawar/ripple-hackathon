@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { generateCorrections, applyAllCorrectionsToText } from '../src/lib/corrections.ts';
+import {
+  generateCorrections,
+  applyAllCorrectionsToText,
+  generatePreciseCorrection,
+} from '../src/lib/corrections.ts';
 import { extractClaimsFromMaterial } from '../src/lib/server/ai-extractor.ts';
 import { compareMaterialClaims, validateClaimIntegrity } from '../src/lib/comparison.ts';
 
@@ -24,10 +28,16 @@ async function runRegressionTests() {
     const summary = compareMaterialClaims('m1', 1, v1Claims, officialFacts, 2, originalText);
     assert.equal(summary.conflictCount, 2, 'Should have 2 conflicts (start_time and venue)');
 
-    const suggestions = generateCorrections('m1', 1, originalText, summary.comparisons, officialFacts, 2);
+    const suggestions = generateCorrections('m1', 1, originalText, summary.comparisons, officialFacts, 2, v1Claims);
     assert.ok(suggestions.length > 0, 'Should generate correction suggestions');
     const correctedText = suggestions[0].suggestedFullText;
 
+    // Assert the complete corrected announcement string
+    assert.equal(
+      correctedText,
+      '🚀 Campus Build Night announcement! Doors open at 11:00 AM at the Innovation Lab.',
+      'Must produce the exact expected announcement preserving surrounding phrasing'
+    );
     assert.ok(correctedText.includes('11:00 AM'), 'Corrected text must contain new start time 11:00 AM');
     assert.ok(correctedText.includes('Innovation Lab'), 'Corrected text must contain new venue Innovation Lab');
     assert.ok(!correctedText.includes('Main Auditorium'), 'Corrected text must NOT contain obsolete Main Auditorium');
@@ -325,6 +335,110 @@ async function runRegressionTests() {
     assert.equal(summary.confirmedCount, 0, 'Confirmed count must be 0');
     assert.equal(summary.unresolvedCount, 1, 'Unresolved count must be 1');
     console.log('✓ TEST 8 Passed: Newly extracted proposed claims require explicit organizer confirmation.\n');
+  }
+
+  // =========================================================================
+  // TEST 9: Precise Value Span Replacement & Surrounding Phrasing Preservation
+  // =========================================================================
+  console.log('TEST 9: Precise Value Span Replacement & Surrounding Phrasing Preservation');
+  {
+    // Regression check for the exact issue in 03_correction_inspector.png:
+    // Original: "Doors open at 10:00 AM at the Main Auditorium."
+    // Must NOT become "11:00 AM Innovation Lab."
+    // Must strictly become: "Doors open at 11:00 AM at the Innovation Lab."
+    const originalText = 'Doors open at 10:00 AM at the Main Auditorium.';
+    const targets = [
+      {
+        field: 'start_time',
+        originalValue: '10:00 AM',
+        replacementValue: '11:00 AM',
+        evidenceQuote: 'Doors open at 10:00 AM',
+      },
+      {
+        field: 'venue',
+        originalValue: 'Main Auditorium',
+        replacementValue: 'Innovation Lab',
+        evidenceQuote: 'at the Main Auditorium',
+      },
+    ];
+
+    const result = generatePreciseCorrection(originalText, targets);
+    assert.equal(
+      result.suggestedText,
+      'Doors open at 11:00 AM at the Innovation Lab.',
+      'Must replace only value spans and preserve "Doors open at " and " at the " and "."'
+    );
+    assert.equal(result.hasAmbiguity, false, 'Should have no ambiguity');
+    assert.equal(result.spans.length, 2, 'Should produce 2 replacement spans');
+
+    // Verify offsets in original text
+    assert.equal(result.spans[0].originalStart, 14); // "10:00 AM" starts at 14
+    assert.equal(result.spans[0].originalEnd, 22);
+    assert.equal(originalText.slice(result.spans[0].originalStart, result.spans[0].originalEnd), '10:00 AM');
+
+    assert.equal(result.spans[1].originalStart, 30); // "Main Auditorium" starts at 30
+    assert.equal(result.spans[1].originalEnd, 45);
+    assert.equal(originalText.slice(result.spans[1].originalStart, result.spans[1].originalEnd), 'Main Auditorium');
+
+    // Verify offsets in replacement draft
+    assert.equal(result.spans[0].replacementStart, 14);
+    assert.equal(result.spans[0].replacementEnd, 22);
+    assert.equal(result.suggestedText.slice(result.spans[0].replacementStart, result.spans[0].replacementEnd), '11:00 AM');
+
+    assert.equal(result.spans[1].replacementStart, 30);
+    assert.equal(result.spans[1].replacementEnd, 44);
+    assert.equal(result.suggestedText.slice(result.spans[1].replacementStart, result.spans[1].replacementEnd), 'Innovation Lab');
+
+    console.log('✓ TEST 9 Passed: Exact factual spans replaced, surrounding words & punctuation strictly preserved.\n');
+  }
+
+  // =========================================================================
+  // TEST 10: Repeated Time in Different Context & Disambiguation
+  // =========================================================================
+  console.log('TEST 10: Repeated Time in Different Context & Disambiguation');
+  {
+    // A repeated time (10:00 AM) occurs in two different places:
+    // 1. Doors open at 10:00 AM
+    // 2. Registration desk opens at 10:00 AM
+    // Only the event start time should be updated; registration desk time must remain untouched!
+    const originalText = 'Doors open at 10:00 AM at the Main Auditorium. Registration desk opens at 10:00 AM.';
+    const targets = [
+      {
+        field: 'start_time',
+        originalValue: '10:00 AM',
+        replacementValue: '11:00 AM',
+        evidenceQuote: 'Doors open at 10:00 AM',
+      },
+      {
+        field: 'venue',
+        originalValue: 'Main Auditorium',
+        replacementValue: 'Innovation Lab',
+        evidenceQuote: 'at the Main Auditorium',
+      },
+    ];
+
+    const result = generatePreciseCorrection(originalText, targets);
+    assert.equal(
+      result.suggestedText,
+      'Doors open at 11:00 AM at the Innovation Lab. Registration desk opens at 10:00 AM.',
+      'Second occurrence of 10:00 AM must NOT be replaced when quote binds to the first'
+    );
+    assert.equal(result.hasAmbiguity, false, 'Disambiguation via evidence quote must succeed without ambiguity');
+
+    // What if no evidenceQuote is provided for a repeated time?
+    const ambiguousTargets = [
+      {
+        field: 'start_time',
+        originalValue: '10:00 AM',
+        replacementValue: '11:00 AM',
+      },
+    ];
+    const ambResult = generatePreciseCorrection(originalText, ambiguousTargets);
+    assert.equal(ambResult.hasAmbiguity, true, 'Repeated value without distinguishing quote must be flagged ambiguous');
+    assert.ok(ambResult.spans[0].ambiguityReason?.includes('occurs 2 times'), 'Reason must explain multiple occurrences');
+    assert.equal(ambResult.suggestedText, originalText, 'Ambiguous value must NOT guess or replace globally');
+
+    console.log('✓ TEST 10 Passed: Repeated time accurately disambiguated; unquoted duplicate safely requires manual edit.\n');
   }
 
   console.log('====================================================');

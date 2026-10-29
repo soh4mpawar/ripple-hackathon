@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MaterialRow, FactRow, ChangeRow, ResolutionRow } from '@/lib/server/tables-db';
 import { Claim, MaterialComparisonSummary, OfficialField } from '@/lib/comparison';
+import {
+  generatePreciseCorrection,
+  ReplacementSpan,
+  CorrectionTarget,
+} from '@/lib/corrections';
 import { StatusBadge } from './StatusBadge';
 import {
   X,
@@ -265,29 +270,29 @@ export function MaterialDetailPanel({
   const materialResolutions = resolutions.filter((r) => r.materialId === material.$id);
   const materialVersions = (versions || []).filter((v: any) => v.materialId === material.$id);
 
-  // Compute multi-fact simultaneous replacements
-  const conflictingComps = (summary?.comparisons || []).filter((c) => !c.isMatch);
-  const generatedCorrections: Array<{
-    field: string;
-    originalQuote: string;
-    replacementText: string;
-  }> = [];
+  // Compute multi-fact simultaneous replacements using precise span targeting
+  const conflictingComps = useMemo(() => {
+    return (summary?.comparisons || []).filter((c) => !c.isMatch);
+  }, [summary?.comparisons]);
 
-  let initialSuggestedText = material.sourceText || '';
-  for (const comp of conflictingComps) {
-    const claim = currentClaims.find((c) => c.id === comp.claimId);
-    if (claim && claim.evidenceQuote) {
-      generatedCorrections.push({
+  const targets: CorrectionTarget[] = useMemo(() => {
+    return conflictingComps.map((comp) => {
+      const claim = currentClaims.find((c) => c.id === comp.claimId);
+      return {
+        claimId: comp.claimId,
         field: comp.field,
-        originalQuote: claim.evidenceQuote,
-        replacementText: comp.officialDisplay,
-      });
-      initialSuggestedText = initialSuggestedText.replace(
-        claim.evidenceQuote,
-        comp.officialDisplay
-      );
-    }
-  }
+        originalValue: claim?.rawValue || comp.claimRaw,
+        replacementValue: comp.officialDisplay,
+        evidenceQuote: claim?.evidenceQuote,
+      };
+    });
+  }, [conflictingComps, currentClaims]);
+
+  const preciseCorrection = useMemo(() => {
+    return generatePreciseCorrection(material.sourceText || '', targets);
+  }, [material.sourceText, targets]);
+
+  const initialSuggestedText = preciseCorrection.suggestedText;
 
   const [editableCorrection, setEditableCorrection] = useState(initialSuggestedText);
   useEffect(() => {
@@ -306,40 +311,74 @@ export function MaterialDetailPanel({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // Helper to render before/after diff with highlighted words
-  function renderHighlightedText(source: string, highlights: Array<{ text: string; type: 'remove' | 'add' }>) {
-    if (!source) return null;
-    const sorted = [...highlights].sort((a, b) => b.text.length - a.text.length);
-    const escaped = sorted.map((h) => h.text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).filter(Boolean);
-    if (escaped.length === 0) return <span>{source}</span>;
+  // Helper to render original text with exact replaced spans struck through
+  function renderOriginalWithHighlights(sourceText: string, spans: ReplacementSpan[]) {
+    if (!sourceText) return null;
+    const validSpans = spans
+      .filter((s) => !s.isAmbiguous && s.originalStart >= 0)
+      .sort((a, b) => a.originalStart - b.originalStart);
 
-    const regex = new RegExp(`(${escaped.join('|')})`, 'g');
-    const parts = source.split(regex);
+    if (validSpans.length === 0) return <span>{sourceText}</span>;
 
-    return parts.map((part, i) => {
-      const match = sorted.find((h) => h.text === part);
-      if (!match) return <span key={i}>{part}</span>;
-      if (match.type === 'remove') {
-        return (
-          <mark
-            key={i}
-            className="bg-rose-100 text-rose-950 line-through px-1.5 py-0.5 rounded font-semibold border border-rose-200 inline"
-            title="Outdated detail in current version"
-          >
-            {part}
-          </mark>
-        );
+    const elements: React.ReactNode[] = [];
+    let lastIdx = 0;
+
+    validSpans.forEach((span, i) => {
+      if (span.originalStart > lastIdx) {
+        elements.push(<span key={`text-${i}`}>{sourceText.slice(lastIdx, span.originalStart)}</span>);
       }
-      return (
+      elements.push(
         <mark
-          key={i}
-          className="bg-emerald-100 text-emerald-950 font-bold px-1.5 py-0.5 rounded border border-emerald-300 inline"
-          title="Updated official detail"
+          key={`mark-${i}`}
+          className="bg-rose-100 text-rose-950 line-through px-1.5 py-0.5 rounded font-semibold border border-rose-200 inline"
+          title={`Outdated ${span.field.replace('_', ' ')} in current version`}
         >
-          {part}
+          {sourceText.slice(span.originalStart, span.originalEnd)}
         </mark>
       );
+      lastIdx = span.originalEnd;
     });
+
+    if (lastIdx < sourceText.length) {
+      elements.push(<span key="text-end">{sourceText.slice(lastIdx)}</span>);
+    }
+
+    return <>{elements}</>;
+  }
+
+  // Helper to render proposed preview with exact new values highlighted
+  function renderProposedWithHighlights(suggestedText: string, spans: ReplacementSpan[]) {
+    if (!suggestedText) return null;
+    const validSpans = spans
+      .filter((s) => !s.isAmbiguous && s.replacementStart >= 0)
+      .sort((a, b) => a.replacementStart - b.replacementStart);
+
+    if (validSpans.length === 0) return <span>{suggestedText}</span>;
+
+    const elements: React.ReactNode[] = [];
+    let lastIdx = 0;
+
+    validSpans.forEach((span, i) => {
+      if (span.replacementStart > lastIdx) {
+        elements.push(<span key={`text-${i}`}>{suggestedText.slice(lastIdx, span.replacementStart)}</span>);
+      }
+      elements.push(
+        <mark
+          key={`mark-${i}`}
+          className="bg-emerald-100 text-emerald-950 font-bold px-1.5 py-0.5 rounded border border-emerald-300 inline"
+          title={`Updated official ${span.field.replace('_', ' ')}`}
+        >
+          {suggestedText.slice(span.replacementStart, span.replacementEnd)}
+        </mark>
+      );
+      lastIdx = span.replacementEnd;
+    });
+
+    if (lastIdx < suggestedText.length) {
+      elements.push(<span key="text-end">{suggestedText.slice(lastIdx)}</span>);
+    }
+
+    return <>{elements}</>;
   }
 
   return (
@@ -832,25 +871,54 @@ export function MaterialDetailPanel({
                   <div className="text-[10px] font-bold text-stone-600 uppercase tracking-wide">
                     Identified Outdated Details
                   </div>
-                  {generatedCorrections.map((corr, idx) => (
+                  {preciseCorrection.spans.map((span, idx) => (
                     <div
                       key={idx}
-                      className="p-2.5 rounded border border-conflict-200 bg-conflict-50 text-xs flex items-center justify-between gap-2"
+                      className={`p-2.5 rounded border text-xs flex items-center justify-between gap-2 ${
+                        span.isAmbiguous
+                          ? 'border-amber-200 bg-amber-50 text-amber-950'
+                          : 'border-conflict-200 bg-conflict-50 text-conflict-950'
+                      }`}
                     >
                       <div className="truncate">
-                        <span className="font-semibold text-conflict-900 uppercase text-[10px]">
-                          {corr.field.replace('_', ' ')}:
+                        <span className="font-semibold uppercase text-[10px] text-stone-700">
+                          {span.field.replace('_', ' ')}:
                         </span>{' '}
-                        <span className="line-through text-stone-500 font-sans">
-                          {corr.originalQuote}
-                        </span>{' '}
-                        <ArrowRight size={11} className="inline mx-1 text-conflict-600" />{' '}
-                        <span className="font-bold text-conflict-950 font-sans">
-                          {corr.replacementText}
-                        </span>
+                        {span.isAmbiguous ? (
+                          <span className="text-amber-800 font-medium">
+                            <AlertTriangle size={12} className="inline mr-1 text-amber-600" />
+                            {span.ambiguityReason || 'Requires manual editing'}
+                          </span>
+                        ) : (
+                          <>
+                            <span className="line-through text-stone-500 font-sans">
+                              {span.originalValue}
+                            </span>{' '}
+                            <ArrowRight size={11} className="inline mx-1 text-conflict-600" />{' '}
+                            <span className="font-bold text-conflict-950 font-sans">
+                              {span.replacementValue}
+                            </span>
+                            {span.evidenceQuote && span.evidenceQuote !== span.originalValue && (
+                              <span className="text-[11px] text-stone-500 ml-2 font-sans italic">
+                                in &ldquo;{span.evidenceQuote}&rdquo;
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
+                  {preciseCorrection.hasAmbiguity && (
+                    <div className="p-2.5 rounded border border-amber-200 bg-amber-50/70 text-xs text-amber-900 flex items-start gap-2">
+                      <AlertTriangle size={14} className="shrink-0 text-amber-700 mt-0.5" />
+                      <div>
+                        <div className="font-semibold">Manual editing required</div>
+                        <p className="text-[11px] text-amber-800 mt-0.5">
+                          Some outdated details could not be unambiguously placed. Please review and edit the draft below manually.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Section 1: Before & After Diff Preview with highlighted changed time and venue */}
@@ -869,9 +937,9 @@ export function MaterialDetailPanel({
                         </span>
                       </div>
                       <div className="text-[14px] sm:text-[15px] font-sans p-3.5 bg-stone-50 rounded-md border border-stone-200 max-h-56 overflow-y-auto whitespace-pre-wrap text-stone-800 leading-relaxed">
-                        {renderHighlightedText(
+                        {renderOriginalWithHighlights(
                           material.sourceText || 'Graphic material',
-                          generatedCorrections.map((c) => ({ text: c.originalQuote, type: 'remove' }))
+                          preciseCorrection.spans
                         )}
                       </div>
                     </div>
@@ -885,9 +953,9 @@ export function MaterialDetailPanel({
                         </span>
                       </div>
                       <div className="text-[14px] sm:text-[15px] font-sans p-3.5 bg-emerald-50/30 rounded-md border border-emerald-200 max-h-56 overflow-y-auto whitespace-pre-wrap text-stone-900 leading-relaxed">
-                        {renderHighlightedText(
+                        {renderProposedWithHighlights(
                           initialSuggestedText,
-                          generatedCorrections.map((c) => ({ text: c.replacementText, type: 'add' }))
+                          preciseCorrection.spans
                         )}
                       </div>
                     </div>

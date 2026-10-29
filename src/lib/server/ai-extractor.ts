@@ -349,7 +349,7 @@ export function fallbackTextExtraction(
   }
 
   // 4. Check for venue (patterns with "Venue:", "Location:", "at the ...", "Auditorium", "Innovation Lab")
-  const venueRegex = /(?:venue|location|reporting\s+venue|held\s+at|at\s+the|at)\s*[:\-]?\s*([A-Za-z0-9\s]+(?:Auditorium|Lab|Hall|Center|Room|Building|Pavilion|[A-Z][a-z]+))/i;
+  const venueRegex = /(?:\b(?:venue|location|reporting\s+venue|held\s+at|at\s+the|at)\b)\s*[:\-]?\s*([A-Za-z0-9\s]+(?:Auditorium|Lab|Hall|Center|Room|Building|Pavilion|[A-Z][a-z]+))/i;
   const venueMatch = text.match(venueRegex);
   if (venueMatch) {
     const rawValue = venueMatch[1].trim();
