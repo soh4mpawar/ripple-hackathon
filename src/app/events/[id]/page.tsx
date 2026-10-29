@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { OfficialDetailsStrip } from '@/components/OfficialDetailsStrip';
 import { ImpactMap } from '@/components/ImpactMap';
@@ -11,7 +11,6 @@ import { AddMaterialModal } from '@/components/AddMaterialModal';
 import { EditOfficialModal } from '@/components/EditOfficialModal';
 import { DemoChangeModal } from '@/components/DemoChangeModal';
 import { CreateEventModal } from '@/components/CreateEventModal';
-import { StatusBadge } from '@/components/StatusBadge';
 import {
   EventRow,
   FactRow,
@@ -20,28 +19,26 @@ import {
   ChangeRow,
   ResolutionRow,
 } from '@/lib/server/tables-db';
-import { MaterialComparisonSummary, Claim } from '@/lib/comparison';
 import { AuthUser } from '@/lib/server/appwrite';
 import {
+  Claim,
+  MaterialComparisonSummary,
+} from '@/lib/comparison';
+import {
   Plus,
-  LayoutGrid,
-  GitBranch,
+  Network,
+  List,
   History,
-  AlertTriangle,
-  RefreshCw,
-  Sparkles,
   ArrowRight,
   ShieldAlert,
 } from 'lucide-react';
 
-export default function EventWorkspacePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id: eventId } = use(params);
+export default function EventWorkspacePage() {
+  const params = useParams();
   const router = useRouter();
+  const eventId = params.id as string;
 
+  // Server state
   const [user, setUser] = useState<AuthUser | null>(null);
   const [event, setEvent] = useState<EventRow | null>(null);
   const [facts, setFacts] = useState<FactRow[]>([]);
@@ -62,8 +59,9 @@ export default function EventWorkspacePage({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // View state
+  // View state: 'graph' (Impact Map) vs 'list' (Material List)
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
+  const [listFilter, setListFilter] = useState<'all' | 'conflicting' | 'review' | 'current'>('all');
   const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
 
   // Modals state
@@ -71,6 +69,13 @@ export default function EventWorkspacePage({
   const [isEditOfficialOpen, setIsEditOfficialOpen] = useState(false);
   const [isDemoChangeOpen, setIsDemoChangeOpen] = useState(false);
   const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
+
+  // Default to list mode on narrow mobile viewports
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setViewMode('list');
+    }
+  }, []);
 
   // Fetch event and auth user
   async function loadData() {
@@ -130,14 +135,21 @@ export default function EventWorkspacePage({
     ambiguityReason: c.ambiguityReason,
   }));
 
+  // Filtered materials for list view
+  const filteredMaterials = materials.filter((mat) => {
+    const summary = summaries[mat.$id];
+    if (listFilter === 'conflicting') return summary?.status === 'conflicting';
+    if (listFilter === 'review') return summary?.status === 'needs_review' || summary?.status === 'unverified';
+    if (listFilter === 'current') return summary?.status === 'current';
+    return true;
+  });
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-warm-50 flex flex-col">
+      <div className="min-h-screen bg-paper-50 flex flex-col">
         <Navbar user={user} />
-        <div className="flex-1 max-w-7xl w-full mx-auto p-6 md:p-8 space-y-6 animate-pulse">
-          <div className="h-10 bg-stone-200/60 rounded-xl w-1/3" />
-          <div className="h-32 bg-white rounded-2xl border border-stone-200" />
-          <div className="h-72 bg-white rounded-2xl border border-stone-200" />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-xs text-stone-500 font-mono">Loading event workspace...</div>
         </div>
       </div>
     );
@@ -145,26 +157,26 @@ export default function EventWorkspacePage({
 
   if (error || !event) {
     return (
-      <div className="min-h-screen bg-warm-50 flex flex-col">
+      <div className="min-h-screen bg-paper-50 flex flex-col">
         <Navbar user={user} />
         <div className="flex-1 max-w-md mx-auto p-8 flex flex-col items-center justify-center text-center">
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-4">
-            <ShieldAlert size={24} />
+          <div className="w-10 h-10 rounded-md bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-3">
+            <ShieldAlert size={20} />
           </div>
-          <h2 className="text-lg font-bold text-stone-900 mb-1">
+          <h2 className="text-sm font-bold text-stone-900 mb-1">
             Unable to Load Event
           </h2>
-          <p className="text-xs text-stone-600 mb-6">{error || 'Event not found or unauthorized'}</p>
-          <div className="flex gap-3">
+          <p className="text-xs text-stone-600 mb-5">{error || 'Event not found or unauthorized'}</p>
+          <div className="flex gap-2.5">
             <button
               onClick={() => router.push('/')}
-              className="px-4 py-2 text-xs font-semibold rounded-xl bg-white border border-stone-300 hover:bg-stone-50"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-white border border-stone-300 hover:bg-stone-50"
             >
               Go to Home
             </button>
             <button
               onClick={loadData}
-              className="px-4 py-2 text-xs font-semibold rounded-xl bg-brand-600 text-white hover:bg-brand-700"
+              className="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-brand-600 text-white hover:bg-brand-700"
             >
               Retry
             </button>
@@ -174,44 +186,45 @@ export default function EventWorkspacePage({
     );
   }
 
+  const needReviewCount = stats.reviewCount + stats.unverifiedCount;
+
   return (
-    <div className="min-h-screen bg-warm-50 flex flex-col">
+    <div className="min-h-screen bg-paper-50 flex flex-col text-stone-900">
       <Navbar
         user={user}
         onNewEventClick={() => setIsCreateEventOpen(true)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Workspace Top Header */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Workspace Header */}
+        <div className="flex flex-wrap items-baseline justify-between gap-4 mb-4 pb-4 border-b border-stone-200">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-black text-stone-900 tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900">
                 {event.name}
               </h1>
-              <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-stone-200/80 text-stone-800">
-                Rev {event.currentRevision}
+              <span className="text-[11px] font-mono text-stone-600 bg-stone-100 border border-stone-200 px-2 py-0.5 rounded">
+                Revision {event.currentRevision} (Rev {event.currentRevision})
               </span>
             </div>
             <p className="text-xs text-stone-500 mt-1">
-              Timezone: <span className="font-mono text-stone-700">{event.timezone}</span> •
-              Created on {new Date(event.createdAt).toLocaleDateString()}
+              Timezone: <span className="font-mono text-stone-700">{event.timezone}</span>
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => setIsAddMaterialOpen(true)}
               type="button"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-2xs transition-colors"
             >
-              <Plus size={15} />
+              <Plus size={13} strokeWidth={2.5} />
               Add Event Material
             </button>
           </div>
         </div>
 
-        {/* 4 Canonical Facts Strip */}
+        {/* Official Details Information Strip */}
         <OfficialDetailsStrip
           facts={facts}
           timezone={event.timezone}
@@ -220,84 +233,76 @@ export default function EventWorkspacePage({
           onDemoChangeClick={() => setIsDemoChangeOpen(true)}
         />
 
-        {/* Summary Metric Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white border border-stone-200/80 rounded-2xl p-4 shadow-2xs">
-            <span className="text-xs font-semibold text-stone-500 uppercase tracking-wide">
-              Total Materials
+        {/* Compact Status Summary Strip */}
+        <div className="bg-white border border-stone-200 rounded-lg px-4 py-3 mb-6 flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-semibold text-stone-900">
+              {stats.totalMaterials} material{stats.totalMaterials !== 1 ? 's' : ''}
             </span>
-            <div className="text-2xl font-black text-stone-900 mt-1">
-              {stats.totalMaterials}
-            </div>
-            <span className="text-[11px] text-stone-400">Tracked in database</span>
+            <span className="text-stone-300">•</span>
+
+            {/* Outdated materials */}
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-conflict-600" />
+              <span className="text-conflict-800 font-semibold">
+                <span className="text-conflict-600 text-2xl font-bold mr-1">{stats.conflictCount}</span>
+                {stats.conflictCount === 1 ? 'needs update' : 'need updates'}
+              </span>
+            </span>
+
+            <span className="text-stone-300">•</span>
+
+            {/* Needs review */}
+            <span className="inline-flex items-center gap-1.5 text-stone-600">
+              <span className="w-2 h-2 rounded-full bg-review-500" />
+              <span>
+                <strong className="font-semibold text-stone-900">{needReviewCount}</strong>{' '}
+                {needReviewCount === 1 ? 'needs review' : 'need review'}
+              </span>
+            </span>
+
+            <span className="text-stone-300">•</span>
+
+            {/* Matches official details */}
+            <span className="inline-flex items-center gap-1.5 text-stone-600">
+              <span className="w-2 h-2 rounded-full bg-current-600" />
+              <span>
+                <strong className="font-semibold text-stone-900">{stats.currentCount}</strong> match official details
+              </span>
+            </span>
           </div>
 
-          <div className="bg-white border border-conflict-200 rounded-2xl p-4 shadow-2xs">
-            <span className="text-xs font-semibold text-conflict-700 uppercase tracking-wide">
-              Outdated materials
-            </span>
-            <div className="text-2xl font-black text-conflict-600 mt-1">
-              {stats.conflictCount}
-            </div>
-            <span className="text-[11px] text-conflict-600">Requires immediate fix</span>
-          </div>
-
-          <div className="bg-white border border-current-200 rounded-2xl p-4 shadow-2xs">
-            <span className="text-xs font-semibold text-current-700 uppercase tracking-wide">
-              Verified Current
-            </span>
-            <div className="text-2xl font-black text-current-600 mt-1">
-              {stats.currentCount}
-            </div>
-            <span className="text-[11px] text-current-700">All claims match Rev {event.currentRevision}</span>
-          </div>
-
-          <div className="bg-white border border-review-200 rounded-2xl p-4 shadow-2xs">
-            <span className="text-xs font-semibold text-review-700 uppercase tracking-wide">
-              Needs Review / Unverified
-            </span>
-            <div className="text-2xl font-black text-review-600 mt-1">
-              {stats.reviewCount + stats.unverifiedCount}
-            </div>
-            <span className="text-[11px] text-review-700">Unreviewed or no facts</span>
-          </div>
-        </div>
-
-        {/* View Mode Toggle Strip */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+          {/* View Mode Toggle: Impact Map vs Material List */}
+          <div className="flex items-center gap-1 bg-paper-100 p-0.5 rounded-md border border-stone-200 text-xs shrink-0">
             <button
               onClick={() => setViewMode('graph')}
               type="button"
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded transition-colors ${
                 viewMode === 'graph'
-                  ? 'bg-stone-900 text-white shadow-xs'
-                  : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+                  ? 'bg-white text-stone-900 shadow-2xs'
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <GitBranch size={13} />
-              Impact Map View
+              <Network size={12} />
+              <span>Impact Map</span>
             </button>
+
             <button
               onClick={() => setViewMode('list')}
               type="button"
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold rounded transition-colors ${
                 viewMode === 'list'
-                  ? 'bg-stone-900 text-white shadow-xs'
-                  : 'bg-white text-stone-600 border border-stone-200 hover:bg-stone-50'
+                  ? 'bg-white text-stone-900 shadow-2xs'
+                  : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              <LayoutGrid size={13} />
-              Material Cards View
+              <List size={12} />
+              <span>Material List</span>
             </button>
           </div>
-
-          <span className="text-xs text-stone-600 font-medium">
-            Click any material card or node to inspect and apply corrections
-          </span>
         </div>
 
-        {/* Impact Map View (or List View) */}
+        {/* Working Area: Impact Map Mode OR Material List Mode */}
         {viewMode === 'graph' ? (
           <ImpactMap
             facts={facts}
@@ -308,71 +313,111 @@ export default function EventWorkspacePage({
             onSelectMaterial={(id) => setSelectedMaterialId(id)}
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-            {materials.map((mat) => (
-              <MaterialCard
-                key={mat.$id}
-                material={mat}
-                summary={summaries[mat.$id]}
-                claims={formattedClaims}
-                isSelected={selectedMaterialId === mat.$id}
-                onSelect={() => setSelectedMaterialId(mat.$id)}
-              />
-            ))}
+          <div className="space-y-3 mb-8">
+            {/* Filter bar for Material List */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-stone-200">
+              <div className="flex items-center gap-1.5 text-xs">
+                <button
+                  onClick={() => setListFilter('all')}
+                  type="button"
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                    listFilter === 'all'
+                      ? 'bg-stone-900 text-white'
+                      : 'text-stone-600 hover:bg-stone-100'
+                  }`}
+                >
+                  All ({materials.length})
+                </button>
+                <button
+                  onClick={() => setListFilter('conflicting')}
+                  type="button"
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                    listFilter === 'conflicting'
+                      ? 'bg-conflict-700 text-white'
+                      : 'text-conflict-800 hover:bg-conflict-50'
+                  }`}
+                >
+                  Needs update ({stats.conflictCount})
+                </button>
+                <button
+                  onClick={() => setListFilter('review')}
+                  type="button"
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                    listFilter === 'review'
+                      ? 'bg-review-700 text-white'
+                      : 'text-review-800 hover:bg-review-50'
+                  }`}
+                >
+                  Needs review ({needReviewCount})
+                </button>
+                <button
+                  onClick={() => setListFilter('current')}
+                  type="button"
+                  className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                    listFilter === 'current'
+                      ? 'bg-current-700 text-white'
+                      : 'text-current-800 hover:bg-current-50'
+                  }`}
+                >
+                  Matches official ({stats.currentCount})
+                </button>
+              </div>
+
+              <span className="text-[11px] text-stone-500">
+                Click any row to inspect claims and apply corrections
+              </span>
+            </div>
+
+            {/* Compact well-aligned rows */}
+            {filteredMaterials.length === 0 ? (
+              <div className="p-8 text-center border border-dashed border-stone-200 rounded-lg bg-white text-stone-500 text-xs">
+                No materials match the selected filter.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredMaterials.map((mat) => (
+                  <MaterialCard
+                    key={mat.$id}
+                    material={mat}
+                    summary={summaries[mat.$id]}
+                    claims={formattedClaims}
+                    isSelected={selectedMaterialId === mat.$id}
+                    onSelect={() => setSelectedMaterialId(mat.$id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Material Cards Grid when in graph view */}
-        {viewMode === 'graph' && (
-          <div className="mb-12">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold text-stone-500 uppercase tracking-wider">
-                Event Materials Grid ({materials.length})
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {materials.map((mat) => (
-                <MaterialCard
-                  key={mat.$id}
-                  material={mat}
-                  summary={summaries[mat.$id]}
-                  claims={formattedClaims}
-                  isSelected={selectedMaterialId === mat.$id}
-                  onSelect={() => setSelectedMaterialId(mat.$id)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Official Change History Section */}
+        {/* Change History Audit Log (Visually restrained) */}
         {changes.length > 0 && (
-          <div className="mt-8 bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <History size={16} className="text-brand-600" />
-              <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wide">
-                Revision Change History (Audit Log)
+          <div className="mt-8 bg-white border border-stone-200 rounded-lg p-5 shadow-2xs">
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-stone-100">
+              <History size={14} className="text-stone-500" />
+              <h3 className="text-xs font-bold text-stone-900 tracking-tight uppercase">
+                Official Detail Change History
               </h3>
             </div>
 
             <div className="divide-y divide-stone-100 text-xs">
               {changes.map((change) => (
-                <div key={change.$id} className="py-2.5 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-stone-800 uppercase text-[11px]">
+                <div key={change.$id} className="py-2 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-stone-700 text-[11px] uppercase">
                       {change.field.replace('_', ' ')}:
                     </span>
-                    <span className="line-through text-stone-400 font-mono">
+                    <span className="line-through text-stone-400 font-mono text-[11px]">
                       {change.oldDisplayValue || 'Initial'}
                     </span>
-                    <ArrowRight size={12} className="text-stone-400" />
-                    <span className="font-bold text-stone-900 font-mono">
+                    <ArrowRight size={10} className="text-stone-400 shrink-0" />
+                    <span className="font-semibold text-stone-900 font-mono text-[11px]">
                       {change.newDisplayValue}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 text-stone-400 font-mono text-[11px]">
-                    <span className="bg-stone-100 px-2 py-0.5 rounded-full text-stone-700">
-                      Rev {change.revision}
+                  <div className="flex items-center gap-2 text-stone-500 font-mono text-[10px] shrink-0">
+                    <span className="bg-stone-100 border border-stone-200 px-1.5 py-0.5 rounded text-stone-700">
+                      Revision {change.revision}
                     </span>
                     <span>{new Date(change.createdAt).toLocaleTimeString()}</span>
                   </div>
@@ -382,6 +427,11 @@ export default function EventWorkspacePage({
           </div>
         )}
       </main>
+
+      {/* Footer credit */}
+      <footer className="mt-auto py-6 border-t border-stone-200 text-center text-[11px] text-stone-400">
+        Ripple · Built with Appwrite TablesDB for the Appwrite Databases Hackathon
+      </footer>
 
       {/* Detail Inspector Drawer / Panel */}
       {selectedMaterial && (

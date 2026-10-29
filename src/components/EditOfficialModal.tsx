@@ -29,6 +29,14 @@ export function EditOfficialModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -63,35 +71,39 @@ export function EditOfficialModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="p-6 border-b border-stone-100 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-lg w-full shadow-lg border border-stone-200 overflow-hidden">
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-stone-200 flex items-center justify-between bg-paper-100">
           <div>
             <h3 className="text-base font-bold text-stone-900">
-              Edit Official Event Details
+              Edit Official Details
             </h3>
             <p className="text-xs text-stone-500 mt-0.5">
-              Updating official facts will atomically increment revision from Rev {currentRevision} to Rev {currentRevision + 1}.
+              Updating details will atomically increment revision from Rev {currentRevision} to Rev {currentRevision + 1}.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 transition-colors"
+            type="button"
+            className="p-1 text-stone-400 hover:text-stone-800 rounded hover:bg-stone-200 transition-colors"
+            title="Close dialog"
+            aria-label="Close dialog"
           >
             <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+            <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
               {error}
             </div>
           )}
 
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-              <Calendar size={14} className="text-brand-600" />
+              <Calendar size={13} className="text-stone-500" />
               Event Date
             </label>
             <input
@@ -99,44 +111,44 @@ export function EditOfficialModal({
               value={eventDate}
               onChange={(e) => setEventDate(e.target.value)}
               placeholder="e.g. October 31, 2026"
-              className="w-full text-xs rounded-xl border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+              className="w-full text-xs rounded-md border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
               required
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-              <Clock size={14} className="text-brand-600" />
-              Attendee Start Time
+              <Clock size={13} className="text-stone-500" />
+              Start Time
             </label>
             <input
               type="text"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
               placeholder="e.g. 10:00 AM"
-              className="w-full text-xs rounded-xl border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+              className="w-full text-xs rounded-md border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
               required
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-              <MapPin size={14} className="text-brand-600" />
-              Official Venue
+              <MapPin size={13} className="text-stone-500" />
+              Venue
             </label>
             <input
               type="text"
               value={venue}
               onChange={(e) => setVenue(e.target.value)}
               placeholder="e.g. Main Auditorium"
-              className="w-full text-xs rounded-xl border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+              className="w-full text-xs rounded-md border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
               required
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1 flex items-center gap-1.5">
-              <AlertCircle size={14} className="text-brand-600" />
+              <AlertCircle size={13} className="text-stone-500" />
               Registration Deadline
             </label>
             <input
@@ -144,30 +156,30 @@ export function EditOfficialModal({
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
               placeholder="e.g. October 30, 2026, 6:00 PM"
-              className="w-full text-xs rounded-xl border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+              className="w-full text-xs rounded-md border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
               required
             />
           </div>
 
-          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl text-[11px] text-amber-800">
-            <strong>Optimistic locking active:</strong> Ripple uses atomic Appwrite TablesDB transactions to prevent stale edits from silently overwriting newer event revisions.
+          <div className="p-3 bg-stone-50 border border-stone-200 rounded-md text-[11px] text-stone-600">
+            <strong className="text-stone-800">Optimistic Locking:</strong> Transactions check current revision before applying updates, guaranteeing stale edits cannot overwrite newer event states.
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-stone-600 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 rounded-md border border-stone-300 hover:bg-stone-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-xl bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold rounded-md bg-brand-600 hover:bg-brand-700 text-white shadow-2xs transition-colors"
             >
               <Save size={13} />
-              {isSubmitting ? 'Committing Transaction...' : 'Commit Atomic Update'}
+              {isSubmitting ? 'Committing...' : 'Save Official Details'}
             </button>
           </div>
         </form>

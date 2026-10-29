@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { MaterialRow, FactRow } from '@/lib/server/tables-db';
 import { Claim, MaterialComparisonSummary } from '@/lib/comparison';
 import { StatusBadge } from './StatusBadge';
-import { Calendar, Clock, MapPin, AlertCircle, FileText, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Calendar, Clock, MapPin, AlertCircle, FileText, Image as ImageIcon } from 'lucide-react';
 
 interface ImpactMapProps {
   facts: FactRow[];
@@ -35,9 +35,8 @@ export function ImpactMap({
 }: ImpactMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const factRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const materialRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const materialRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [edges, setEdges] = useState<EdgePath[]>([]);
-  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
 
   // Calculate SVG edge coordinates dynamically based on rendered DOM node positions
   useEffect(() => {
@@ -54,7 +53,6 @@ export function ImpactMap({
         if (!matEl) continue;
         const matRect = matEl.getBoundingClientRect();
 
-        // Calculate material left connector coordinate relative to container
         const mX = matRect.left - containerRect.left;
         const mY = matRect.top + matRect.height / 2 - containerRect.top;
 
@@ -63,12 +61,10 @@ export function ImpactMap({
           if (!factEl) continue;
           const factRect = factEl.getBoundingClientRect();
 
-          // Calculate fact right connector coordinate relative to container
           const fX = factRect.right - containerRect.left;
           const fY = factRect.top + factRect.height / 2 - containerRect.top;
 
-          // Bezier curve control points
-          const deltaX = Math.max(40, (mX - fX) * 0.5);
+          const deltaX = Math.max(48, (mX - fX) * 0.48);
           const pathD = `M ${fX} ${fY} C ${fX + deltaX} ${fY}, ${mX - deltaX} ${mY}, ${mX} ${mY}`;
 
           newEdges.push({
@@ -88,7 +84,7 @@ export function ImpactMap({
 
     calculateEdges();
     window.addEventListener('resize', calculateEdges);
-    const timeout = setTimeout(calculateEdges, 100);
+    const timeout = setTimeout(calculateEdges, 120);
     return () => {
       window.removeEventListener('resize', calculateEdges);
       clearTimeout(timeout);
@@ -96,52 +92,52 @@ export function ImpactMap({
   }, [facts, materials, claims, summaries]);
 
   const fieldIcons: Record<string, React.ReactNode> = {
-    event_date: <Calendar size={15} className="text-brand-600" />,
-    start_time: <Clock size={15} className="text-brand-600" />,
-    venue: <MapPin size={15} className="text-brand-600" />,
-    registration_deadline: <AlertCircle size={15} className="text-brand-600" />,
+    event_date: <Calendar size={13} className="text-stone-500" />,
+    start_time: <Clock size={13} className="text-stone-500" />,
+    venue: <MapPin size={13} className="text-stone-500" />,
+    registration_deadline: <AlertCircle size={13} className="text-stone-500" />,
   };
 
   const fieldLabels: Record<string, string> = {
-    event_date: 'Event Date',
-    start_time: 'Start Time',
-    venue: 'Venue',
+    event_date: 'Official Date',
+    start_time: 'Official Start',
+    venue: 'Official Venue',
     registration_deadline: 'Reg Deadline',
   };
 
   return (
     <div
       ref={containerRef}
-      className="relative bg-white border border-stone-200/80 rounded-2xl p-6 shadow-sm mb-8 overflow-hidden"
+      className="relative bg-white border border-stone-200 rounded-lg p-5 shadow-2xs mb-6 overflow-hidden"
     >
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-stone-100">
+      {/* Header and Legend */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-3 border-b border-stone-100">
         <div>
-          <h2 className="text-sm font-bold text-stone-900 tracking-wide uppercase">
-            Official Facts vs. Event Materials Impact Map
+          <h2 className="text-xs font-bold text-stone-900 tracking-tight uppercase">
+            Impact Map · Dependency Routing
           </h2>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Lines show confirmed facts repeated across materials. Red lines indicate outdated claims requiring fixes.
+          <p className="text-[11px] text-stone-500 mt-0.5">
+            Connections show official details repeated across announcements. Outdated connections are highlighted in red.
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-4 text-xs font-medium">
+        <div className="flex items-center gap-3 text-[11px] font-medium text-stone-600">
           <div className="flex items-center gap-1.5">
-            <span className="w-3.5 h-1 rounded-full bg-current-500 inline-block" />
-            <span className="text-stone-600">Verified Current</span>
+            <span className="w-2.5 h-2.5 rounded-xs bg-current-600 inline-block" />
+            <span>Matches official</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3.5 h-1 rounded-full bg-conflict-500 inline-block" />
-            <span className="text-stone-600 font-semibold">Outdated / Conflict</span>
+            <span className="w-2.5 h-2.5 rounded-xs bg-conflict-600 inline-block" />
+            <span className="font-semibold text-conflict-800">Needs update</span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start relative z-10">
-        {/* Left Column: Official Facts */}
-        <div className="md:col-span-4 space-y-4">
-          <div className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-2">
-            Canonical Facts
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start relative z-10">
+        {/* Left Column: Official Details */}
+        <div className="md:col-span-4 space-y-3">
+          <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-1">
+            Official Details
           </div>
           {facts.map((fact) => (
             <div
@@ -149,36 +145,34 @@ export function ImpactMap({
               ref={(el) => {
                 factRefs.current[fact.field] = el;
               }}
-              className="relative p-3.5 rounded-xl border border-stone-200 bg-stone-50/60 hover:bg-stone-50 transition-colors shadow-2xs group"
+              className="relative p-3 rounded-md border border-stone-200 bg-paper-50 text-left"
             >
               <div className="flex items-center gap-2 mb-1">
-                <span className="p-1 rounded-md bg-white border border-stone-200">
-                  {fieldIcons[fact.field] || <Sparkles size={14} />}
-                </span>
-                <span className="text-xs font-semibold text-stone-700">
+                {fieldIcons[fact.field]}
+                <span className="text-[11px] font-semibold text-stone-700">
                   {fieldLabels[fact.field] || fact.field}
                 </span>
               </div>
-              <div className="text-sm font-semibold text-stone-900 pl-7 truncate" title={fact.displayValue}>
+              <div className="text-xs font-semibold text-stone-900 pl-5 truncate" title={fact.displayValue}>
                 {fact.displayValue}
               </div>
-              {/* Connector dot */}
-              <div className="hidden md:block absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-brand-500 border-2 border-white shadow-xs" />
+              {/* Connector point */}
+              <div className="hidden md:block absolute -right-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-stone-400 border border-white" />
             </div>
           ))}
         </div>
 
-        {/* Middle Spacer for SVG */}
-        <div className="hidden md:block md:col-span-3 min-h-[320px] pointer-events-none" />
+        {/* Middle Spacer for Clean SVG Lines */}
+        <div className="hidden md:block md:col-span-3 min-h-[300px] pointer-events-none" />
 
-        {/* Right Column: Materials */}
-        <div className="md:col-span-5 space-y-3">
-          <div className="text-xs font-bold text-stone-600 uppercase tracking-wider mb-2">
-            Tracked Event Materials ({materials.length})
+        {/* Right Column: Connected Materials */}
+        <div className="md:col-span-5 space-y-2.5">
+          <div className="text-[10px] font-bold text-stone-400 uppercase tracking-wider px-1">
+            Connected Materials ({materials.length})
           </div>
           {materials.length === 0 ? (
-            <div className="p-6 text-center border border-dashed border-stone-200 rounded-xl text-stone-600 text-xs">
-              No materials added yet. Paste announcement text or upload a poster to inspect conflicts.
+            <div className="p-6 text-center border border-dashed border-stone-200 rounded-md text-stone-500 text-xs">
+              No materials added yet.
             </div>
           ) : (
             materials.map((mat) => {
@@ -187,37 +181,44 @@ export function ImpactMap({
               const hasConflict = summary?.status === 'conflicting';
 
               return (
-                <div
+                <button
                   key={mat.$id}
                   ref={(el) => {
                     materialRefs.current[mat.$id] = el;
                   }}
+                  type="button"
                   onClick={() => onSelectMaterial(mat.$id)}
-                  className={`relative p-3.5 rounded-xl border transition-all cursor-pointer text-left ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectMaterial(mat.$id);
+                    }
+                  }}
+                  className={`w-full relative p-3 rounded-md border text-left transition-colors cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 ${
                     isSelected
-                      ? 'border-brand-600 bg-brand-50/40 shadow-sm ring-1 ring-brand-500'
+                      ? 'border-brand-600 bg-brand-50/50 shadow-2xs'
                       : hasConflict
-                      ? 'border-conflict-300 bg-conflict-50/20 hover:border-conflict-400'
+                      ? 'border-conflict-300 bg-conflict-50/30 hover:border-conflict-400'
                       : 'border-stone-200 bg-white hover:border-stone-300'
                   }`}
                 >
-                  {/* Connector dot */}
+                  {/* Connector point */}
                   <div
-                    className={`hidden md:block absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-white shadow-xs ${
+                    className={`hidden md:block absolute -left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full border border-white ${
                       hasConflict ? 'bg-conflict-600' : 'bg-current-600'
                     }`}
                   />
 
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2 min-w-0">
                       {mat.kind === 'image' ? (
-                        <ImageIcon size={15} className="text-brand-600 shrink-0" />
+                        <ImageIcon size={13} className="text-stone-500 shrink-0" />
                       ) : (
-                        <FileText size={15} className="text-stone-500 shrink-0" />
+                        <FileText size={13} className="text-stone-500 shrink-0" />
                       )}
-                      <span className="text-sm font-semibold text-stone-900 truncate">
+                      <h3 className="text-xs font-semibold text-stone-900 truncate group-hover:text-brand-700 transition-colors">
                         {mat.title}
-                      </span>
+                      </h3>
                     </div>
 
                     {summary && (
@@ -229,13 +230,13 @@ export function ImpactMap({
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-stone-600 pl-6">
+                  <div className="flex items-center justify-between text-[11px] text-stone-500 pl-5">
                     <span>Version {mat.version}</span>
                     <span>
-                      {summary?.confirmedCount || 0} confirmed facts
+                      {summary?.confirmedCount || 0} reviewed claim{summary?.confirmedCount !== 1 ? 's' : ''}
                     </span>
                   </div>
-                </div>
+                </button>
               );
             })
           )}
@@ -247,26 +248,33 @@ export function ImpactMap({
         className="hidden md:block absolute inset-0 w-full h-full pointer-events-none z-0"
         style={{ overflow: 'visible' }}
       >
-        <defs>
-          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="1" stdDeviation="2" floodColor="#E11D48" floodOpacity="0.4" />
-          </filter>
-        </defs>
         {edges.map((edge) => {
           const isSelected = selectedMaterialId === edge.materialId;
+          const hasSelected = selectedMaterialId !== null;
           const isConflicting = !edge.isMatch;
+
+          let opacity = 0.6;
+          let strokeWidth = 1.5;
+
+          if (hasSelected) {
+            if (isSelected) {
+              opacity = 1;
+              strokeWidth = 2.5;
+            } else {
+              opacity = 0.15;
+              strokeWidth = 1;
+            }
+          }
 
           return (
             <path
               key={edge.id}
               d={edge.d}
               fill="none"
-              stroke={isConflicting ? '#E11D48' : '#10B981'}
-              strokeWidth={isConflicting ? (isSelected ? 3.5 : 2.5) : (isSelected ? 2.5 : 1.5)}
-              strokeDasharray={isConflicting ? '6,4' : undefined}
-              filter={isConflicting ? 'url(#glow)' : undefined}
-              opacity={isSelected ? 1 : 0.75}
-              className="transition-all duration-200"
+              stroke={isConflicting ? '#DC2626' : '#16A34A'}
+              strokeWidth={strokeWidth}
+              opacity={opacity}
+              className="transition-opacity duration-150"
             />
           );
         })}

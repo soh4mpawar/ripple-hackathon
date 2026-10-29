@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, FileText, Image as ImageIcon, UploadCloud, Sparkles } from 'lucide-react';
+import { X, FileText, Image as ImageIcon, UploadCloud } from 'lucide-react';
 
 interface AddMaterialModalProps {
   eventId: string;
@@ -87,62 +87,66 @@ export function AddMaterialModal({ eventId, onClose, onSuccess }: AddMaterialMod
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="p-6 border-b border-stone-100 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-brand-50 text-brand-600">
-              <Sparkles size={18} />
-            </span>
+    <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-lg w-full shadow-lg border border-stone-200 overflow-hidden">
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-stone-200 flex items-center justify-between bg-paper-100">
+          <div>
             <h3 className="text-base font-bold text-stone-900">
               Add Event Material
             </h3>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Add an announcement or poster to monitor against official details.
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 transition-colors"
+            type="button"
+            className="p-1 text-stone-400 hover:text-stone-800 rounded hover:bg-stone-200 transition-colors"
+            title="Close dialog"
+            aria-label="Close dialog"
           >
             <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+            <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs">
               {error}
             </div>
           )}
 
-          {/* Kind selector */}
+          {/* Kind selector tabs */}
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setKind('text')}
-              className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
+              className={`p-3 rounded-md border text-left flex items-center gap-2.5 transition-colors ${
                 kind === 'text'
-                  ? 'border-brand-600 bg-brand-50/50 text-brand-900 ring-1 ring-brand-500'
-                  : 'border-stone-200 hover:border-stone-300 text-stone-700'
+                  ? 'border-brand-600 bg-brand-50/50 text-brand-900'
+                  : 'border-stone-200 hover:border-stone-300 text-stone-700 bg-white'
               }`}
             >
-              <FileText size={18} className={kind === 'text' ? 'text-brand-600' : 'text-stone-400'} />
+              <FileText size={16} className={kind === 'text' ? 'text-brand-600' : 'text-stone-400'} />
               <div>
-                <div className="text-xs font-bold">Pasted Text</div>
-                <div className="text-[11px] text-stone-500">Announcement or email copy</div>
+                <div className="text-xs font-semibold">Pasted Text</div>
+                <div className="text-[11px] text-stone-500">Group chat or email copy</div>
               </div>
             </button>
 
             <button
               type="button"
               onClick={() => setKind('image')}
-              className={`p-3 rounded-xl border text-left flex items-center gap-3 transition-all ${
+              className={`p-3 rounded-md border text-left flex items-center gap-2.5 transition-colors ${
                 kind === 'image'
-                  ? 'border-brand-600 bg-brand-50/50 text-brand-900 ring-1 ring-brand-500'
-                  : 'border-stone-200 hover:border-stone-300 text-stone-700'
+                  ? 'border-brand-600 bg-brand-50/50 text-brand-900'
+                  : 'border-stone-200 hover:border-stone-300 text-stone-700 bg-white'
               }`}
             >
-              <ImageIcon size={18} className={kind === 'image' ? 'text-brand-600' : 'text-stone-400'} />
+              <ImageIcon size={16} className={kind === 'image' ? 'text-brand-600' : 'text-stone-400'} />
               <div>
-                <div className="text-xs font-bold">Poster Graphic</div>
+                <div className="text-xs font-semibold">Poster Graphic</div>
                 <div className="text-[11px] text-stone-500">PNG or JPEG screenshot</div>
               </div>
             </button>
@@ -154,10 +158,10 @@ export function AddMaterialModal({ eventId, onClose, onSuccess }: AddMaterialMod
             </label>
             <input
               type="text"
-              placeholder="e.g. Instagram Story Announcement"
+              placeholder="e.g. Discord Announcement or Instagram Story"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full text-xs rounded-xl border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+              className="w-full text-xs rounded-md border border-stone-300 p-2.5 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
               required
             />
           </div>
@@ -168,15 +172,15 @@ export function AddMaterialModal({ eventId, onClose, onSuccess }: AddMaterialMod
                 Announcement Content
               </label>
               <textarea
-                rows={6}
-                placeholder="Paste your announcement, email snippet, or volunteer handout text..."
+                rows={5}
+                placeholder="Paste announcement text, volunteer instructions, or email draft..."
                 value={sourceText}
                 onChange={(e) => setSourceText(e.target.value)}
-                className="w-full text-xs rounded-xl border border-stone-300 p-3 font-mono focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+                className="w-full text-xs rounded-md border border-stone-300 p-2.5 font-mono focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
                 required
               />
               <p className="text-[11px] text-stone-500 mt-1">
-                Ripple will extract factual claims (dates, times, venues) for your review.
+                Ripple extracts claims (dates, times, venues) for your explicit review.
               </p>
             </div>
           ) : (
@@ -184,15 +188,15 @@ export function AddMaterialModal({ eventId, onClose, onSuccess }: AddMaterialMod
               <label className="block text-xs font-semibold text-stone-700 mb-1">
                 Upload Poster Image
               </label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-stone-300 border-dashed rounded-xl hover:border-brand-400 transition-colors bg-stone-50/50">
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-stone-300 border-dashed rounded-md hover:border-brand-400 transition-colors bg-stone-50/50">
                 <div className="space-y-1 text-center">
-                  <UploadCloud className="mx-auto h-8 w-8 text-stone-400" />
+                  <UploadCloud className="mx-auto h-7 w-7 text-stone-400" />
                   <div className="flex text-xs text-stone-600 justify-center">
                     <label
                       htmlFor="file-upload"
-                      className="relative cursor-pointer font-semibold text-brand-600 hover:text-brand-500 focus-within:outline-hidden"
+                      className="relative cursor-pointer font-semibold text-brand-600 hover:text-brand-700 focus-within:outline-hidden"
                     >
-                      <span>Select a file</span>
+                      <span>Select an image file</span>
                       <input
                         id="file-upload"
                         name="file-upload"
@@ -206,7 +210,7 @@ export function AddMaterialModal({ eventId, onClose, onSuccess }: AddMaterialMod
                     </label>
                     <p className="pl-1">or drag and drop</p>
                   </div>
-                  <p className="text-[11px] text-stone-600">
+                  <p className="text-[11px] text-stone-500">
                     {selectedFile ? (
                       <span className="font-semibold text-stone-900">{selectedFile.name}</span>
                     ) : (
@@ -218,18 +222,18 @@ export function AddMaterialModal({ eventId, onClose, onSuccess }: AddMaterialMod
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-stone-600 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 rounded-md border border-stone-300 hover:bg-stone-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 text-xs font-semibold rounded-xl bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition-colors"
+              className="px-4 py-1.5 text-xs font-semibold rounded-md bg-brand-600 hover:bg-brand-700 text-white shadow-2xs transition-colors"
             >
               {isSubmitting ? 'Analyzing & Extracting...' : 'Add Material & Extract Claims'}
             </button>

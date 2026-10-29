@@ -11,20 +11,25 @@ Ripple is a production-grade web application built for the **Appwrite Databases 
 
 ## 📸 Interface & Workflow Walkthrough
 
-| 1. Initial Workspace (Revision 1) | 2. Real-Time Conflict Detection (Revision 2) |
+| 1. Editorial Landing Page | 2. Initial Workspace & Impact Map |
 | :---: | :---: |
-| ![Initial Workspace](docs/screenshots/01_initial_workspace.png) | ![Conflict State](docs/screenshots/02_conflict_state.png) |
-| *Seeded official facts and materials in verified state.* | *Impact map highlights outdated materials when venue/time changes.* |
+| ![Editorial Landing Page](docs/screenshots/01_landing_page.png) | ![Initial Workspace](docs/screenshots/02_workspace_initial.png) |
+| *Composed opening with dependency model and 3-step walkthrough.* | *Official details strip, compact status counter & Impact Map.* |
 
-| 3. Correction & Explicit Review | 4. Preserved Version Audit History |
+| 3. Real-Time Outdated Detection (Revision 2) | 4. Side-by-Side Correction Inspector |
 | :---: | :---: |
-| ![Corrected Material](docs/screenshots/03_corrected_material.png) | ![Version History](docs/screenshots/05_version_history.png) |
-| *Unified multi-fact text correction with explicit claim review.* | *Full audit trail preserving historical source snapshots.* |
+| ![Conflict State](docs/screenshots/03_workspace_conflict.png) | ![Correction Inspector](docs/screenshots/04_correction_inspector.png) |
+| *Visual dependency map highlights outdated announcements.* | *Diff comparison highlighting exact changes before saving Version 2.* |
 
-| 5. High-Resolution Poster Upload & Manual Review | 6. Mobile Responsive Layout |
+| 5. Explicit Claims Review & Evidence Validation | 6. Mobile Responsive Workspace |
 | :---: | :---: |
-| ![Poster Upload](docs/screenshots/04_poster_upload.png) | ![Mobile Layout](docs/screenshots/07_mobile_layout.png) |
-| *Appwrite Storage upload with manual claim entry & review.* | *Fully responsive for mobile club organizers on the go.* |
+| ![Claims Review](docs/screenshots/05_claims_review.png) | ![Mobile Workspace](docs/screenshots/06_mobile_workspace.png) |
+| *Proposed claims banner requires explicit confirmation.* | *Default list mode and compact layout for mobile organizers.* |
+
+| 7. Poster Upload & Manual Review | 8. Preserved Version Audit Trail |
+| :---: | :---: |
+| ![Poster Upload](docs/screenshots/04_poster_upload.png) | ![Version History](docs/screenshots/05_version_history.png) |
+| *Appwrite Storage upload with manual claim entry & review.* | *Full audit trail preserving historical source snapshots.* |
 
 ---
 
@@ -39,11 +44,11 @@ Ripple is a production-grade web application built for the **Appwrite Databases 
   - Explicit **Event Timezone** (e.g., `Asia/Kolkata`) guarantees unambiguous scheduling.
 
 ### The 7-Step Lifecycle:
-1. **Create an Event**: Define canonical event facts and timezone in Appwrite TablesDB.
+1. **Create an Event**: Define official event details and timezone in Appwrite TablesDB.
 2. **Register Materials**: Paste plain-text announcements or upload poster graphics (PNG/JPEG).
 3. **Claim Extraction**: Server-side extraction parses dates, times, venues, and deadlines with verbatim evidence quotes.
 4. **Explicit Organizer Review**: Extracted claims start in a `proposed` (or `needs_clarification`) state. The organizer explicitly reviews, edits, or confirms them.
-5. **Relational Comparison Engine**: Ripple compares confirmed claims against canonical facts.
+5. **Relational Comparison Engine**: Ripple compares confirmed claims against official details.
 6. **Instant Conflict Impact Map**: When official details change, outdated materials visibly highlight with conflict counts and exact evidence diffs.
 7. **Resolution, Versioning & Audit**: Apply unified text corrections (bumping to Version $N+1$), confirm newly extracted claims, and preserve historical source snapshots.
 
@@ -145,7 +150,7 @@ erDiagram
 
 To eliminate false verifications, Ripple enforces strict database and comparison rules:
 
-- **Explicit Organizer Review**: When a new version is created from corrected text, newly extracted claims are saved as `proposed` (or `needs_clarification`). They require explicit organizer confirmation before the material can become `Verified Current`.
+- **Explicit Organizer Review**: When a new version is created from corrected text, newly extracted claims are saved as `proposed` (or `needs_clarification`). They require explicit organizer confirmation before the material can become `Reviewed · Matches official details`.
 - **Complete Claim Validation**: A verbatim evidence quote is necessary but not sufficient. Server-side validation asserts:
   1. The evidence quote occurs verbatim in the saved source copy.
   2. The evidence quote **supports** the claimed value (the quote contains the claimed text). For example, quote `"Venue: Main Auditorium"` with claimed venue `"Innovation Lab"` is rejected by the server and flagged as an unsupported conflict.

@@ -1,6 +1,6 @@
 import React from 'react';
 import { MaterialStatus } from '@/lib/comparison';
-import { CheckCircle2, AlertTriangle, AlertCircle, HelpCircle } from 'lucide-react';
+import { Check, AlertTriangle, AlertCircle, HelpCircle } from 'lucide-react';
 
 interface StatusBadgeProps {
   status: MaterialStatus;
@@ -11,26 +11,30 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, conflictCount = 0, label, size = 'md' }: StatusBadgeProps) {
   const isSmall = size === 'sm';
-  const sizeClasses = isSmall ? 'text-xs px-2 py-0.5' : 'text-xs font-medium px-2.5 py-1';
-  const iconSize = isSmall ? 12 : 14;
+  const sizeClasses = isSmall
+    ? 'text-[11px] font-medium px-2 py-0.5 rounded-md'
+    : 'text-xs font-medium px-2.5 py-1 rounded-md';
+  const iconSize = isSmall ? 11 : 13;
 
   switch (status) {
     case 'conflicting':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border border-conflict-500/30 bg-conflict-50 text-conflict-700 ${sizeClasses}`}
+          className={`inline-flex items-center gap-1.5 border border-conflict-200 bg-conflict-50 text-conflict-800 shrink-0 ${sizeClasses}`}
         >
-          <AlertCircle size={iconSize} className="text-conflict-600 shrink-0" />
-          <span>{label || `${conflictCount} Outdated Fact${conflictCount > 1 ? 's' : ''}`}</span>
+          <AlertCircle size={iconSize} className="text-conflict-700 shrink-0" />
+          <span className="font-semibold">
+            {label || (conflictCount > 0 ? `${conflictCount} Outdated` : 'Outdated')}
+          </span>
         </span>
       );
 
     case 'needs_review':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border border-review-500/30 bg-review-50 text-review-700 ${sizeClasses}`}
+          className={`inline-flex items-center gap-1.5 border border-review-200 bg-review-50 text-review-800 shrink-0 ${sizeClasses}`}
         >
-          <AlertTriangle size={iconSize} className="text-review-600 shrink-0" />
+          <AlertTriangle size={iconSize} className="text-review-700 shrink-0" />
           <span>{label || 'Needs Review'}</span>
         </span>
       );
@@ -38,10 +42,10 @@ export function StatusBadge({ status, conflictCount = 0, label, size = 'md' }: S
     case 'current':
       return (
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border border-current-500/30 bg-current-50 text-current-700 ${sizeClasses}`}
+          className={`inline-flex items-center gap-1.5 border border-current-200 bg-current-50 text-current-800 shrink-0 ${sizeClasses}`}
         >
-          <CheckCircle2 size={iconSize} className="text-current-600 shrink-0" />
-          <span>{label || 'Verified Current'}</span>
+          <Check size={iconSize} className="text-current-700 shrink-0" strokeWidth={2.5} />
+          <span>{label || (isSmall ? 'Matches official' : 'Reviewed · Matches official details')}</span>
         </span>
       );
 
@@ -49,10 +53,10 @@ export function StatusBadge({ status, conflictCount = 0, label, size = 'md' }: S
     default:
       return (
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border border-stone-300 bg-stone-100 text-stone-700 ${sizeClasses}`}
+          className={`inline-flex items-center gap-1.5 border border-stone-200 bg-stone-100 text-stone-700 shrink-0 ${sizeClasses}`}
         >
           <HelpCircle size={iconSize} className="text-stone-500 shrink-0" />
-          <span>{label || 'No Confirmed Facts'}</span>
+          <span>{label || 'Unreviewed'}</span>
         </span>
       );
   }

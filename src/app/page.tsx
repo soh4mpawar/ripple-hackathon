@@ -11,13 +11,16 @@ import {
   Sparkles,
   Plus,
   ArrowRight,
-  ShieldCheck,
   Calendar,
   Layers,
   AlertCircle,
   Clock,
   MapPin,
   CheckCircle2,
+  FileText,
+  Image as ImageIcon,
+  Check,
+  AlertTriangle,
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -70,100 +73,231 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-warm-50 flex flex-col selection:bg-brand-100 selection:text-brand-900">
+    <div className="min-h-screen bg-paper-50 flex flex-col selection:bg-brand-100 selection:text-brand-900 text-stone-900">
       <Navbar
         user={user}
         onNewEventClick={user ? () => setIsCreateOpen(true) : undefined}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
-        {/* Hero Section */}
-        <div className="max-w-3xl mx-auto text-center mb-16">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-semibold mb-6">
-            <span className="w-2 h-2 rounded-full bg-brand-600 animate-pulse" />
-            Built for the Appwrite Databases Hackathon
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl font-black text-stone-900 tracking-tight leading-tight">
-            “Your venue changed.{' '}
-            <span className="text-brand-600 underline decoration-brand-300 underline-offset-4">
-              Your poster didn&apos;t.
-            </span>{' '}
-            Ripple finds what needs fixing.”
-          </h1>
-
-          <p className="mt-5 text-base sm:text-lg text-stone-600 leading-relaxed max-w-2xl mx-auto">
-            College club organizers manage announcements, posters, and volunteer instructions
-            across dozens of channels. When an official detail shifts, Ripple connects facts to
-            materials in Appwrite TablesDB and highlights exactly what became outdated.
-          </p>
-
-          {demoError && (
-            <div className="mt-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs text-left max-w-md mx-auto">
-              <div className="font-bold mb-1 flex items-center gap-1.5">
-                <AlertCircle size={14} className="text-amber-600 shrink-0" />
-                Appwrite Connection Notice
+      {/* Quick Resume Strip for Authenticated Users */}
+      {user && events.length > 0 && (
+        <div className="bg-paper-100 border-b border-stone-200 py-3 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-stone-700">Quick Resume:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {events.slice(0, 3).map((ev) => (
+                  <Link
+                    key={ev.$id}
+                    href={`/events/${ev.$id}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-stone-200 bg-white text-stone-800 hover:border-brand-500 hover:text-brand-700 transition-colors"
+                  >
+                    <span className="font-medium truncate max-w-[160px]">{ev.name}</span>
+                    <span className="font-mono text-[10px] text-stone-400">r{ev.currentRevision}</span>
+                  </Link>
+                ))}
               </div>
-              <p>{demoError}</p>
-              <p className="mt-2 text-[11px] text-amber-700">
-                To test live with your Appwrite project, configure <code>.env.local</code> and run{' '}
-                <code>node scripts/setup-appwrite.mjs</code>.
-              </p>
             </div>
-          )}
-
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <button
-              onClick={handleTrySample}
-              disabled={isDemoLoading}
-              type="button"
-              className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all"
+              onClick={() => setIsCreateOpen(true)}
+              className="text-brand-600 hover:text-brand-700 font-semibold inline-flex items-center gap-1 text-[11px]"
             >
-              <Sparkles size={16} className={isDemoLoading ? 'animate-spin' : ''} />
-              {isDemoLoading ? 'Preparing Sample Event...' : 'Try Sample Event: Campus Build Night'}
-              <ArrowRight size={15} />
+              <Plus size={12} />
+              New Event
             </button>
+          </div>
+        </div>
+      )}
 
-            {user ? (
-              <button
-                onClick={() => setIsCreateOpen(true)}
-                type="button"
-                className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 font-semibold text-sm shadow-xs transition-colors"
-              >
-                <Plus size={15} />
-                Create New Event
-              </button>
-            ) : (
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 font-semibold text-sm shadow-xs transition-colors"
-              >
-                Sign In / Register
-              </Link>
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
+        {/* Composed Two-Column Hero */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center mb-16 md:mb-24">
+          {/* Left Column: Headline, Explanation & Actions */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-stone-100 border border-stone-200 text-stone-700 text-[11px] font-semibold tracking-wide uppercase">
+              Event Operations Workspace
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl font-serif font-bold text-stone-900 tracking-tight leading-[1.15]">
+              One change.{' '}
+              <span className="text-brand-600">
+                Find every outdated announcement.
+              </span>
+            </h1>
+
+            <p className="text-base sm:text-lg text-stone-600 leading-relaxed max-w-xl">
+              When an official venue, time, or deadline shifts, your posters, group chats,
+              and volunteer notes don’t fix themselves. Ripple tracks what was shared across every
+              channel and pinpoints exactly what became outdated.
+            </p>
+
+            {demoError && (
+              <div className="p-3.5 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                <div className="font-bold mb-1 flex items-center gap-1.5">
+                  <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                  Appwrite Connection Notice
+                </div>
+                <p>{demoError}</p>
+                <p className="mt-1 text-[11px] text-amber-700">
+                  Verify Appwrite credentials in <code>.env.local</code>.
+                </p>
+              </div>
             )}
+
+            <div className="pt-2 flex flex-wrap items-center gap-3">
+              <button
+                onClick={handleTrySample}
+                disabled={isDemoLoading}
+                type="button"
+                data-testid="try-demo-btn"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-md bg-brand-600 hover:bg-brand-700 text-white font-semibold text-sm shadow-2xs transition-colors"
+              >
+                <Sparkles size={16} className={isDemoLoading ? 'animate-spin' : ''} />
+                <span>
+                  {isDemoLoading ? 'Preparing Sample Event...' : 'Try the live demo'}
+                </span>
+                <span className="text-brand-200 text-xs font-normal">
+                  (Campus Build Night)
+                </span>
+                <ArrowRight size={15} />
+              </button>
+
+              {user ? (
+                <button
+                  onClick={() => setIsCreateOpen(true)}
+                  type="button"
+                  className="inline-flex items-center gap-2 px-4 py-3 rounded-md bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 font-semibold text-sm transition-colors"
+                >
+                  <Plus size={15} />
+                  Create an event
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-2 px-4 py-3 rounded-md bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 font-semibold text-sm transition-colors"
+                >
+                  Create an event
+                </Link>
+              )}
+            </div>
+
+            <div className="pt-1 flex flex-wrap items-center gap-y-1 gap-x-5 text-xs text-stone-500">
+              <span className="flex items-center gap-1.5">
+                <Check size={13} className="text-current-600 stroke-2" />
+                Isolated demo session
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check size={13} className="text-current-600 stroke-2" />
+                Live Appwrite TablesDB rows
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check size={13} className="text-current-600 stroke-2" />
+                No login required to try
+              </span>
+            </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-6 text-xs text-stone-600">
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 size={13} className="text-current-600" />
-              Isolated demo session
-            </span>
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 size={13} className="text-current-600" />
-              Real database rows
-            </span>
-            <span className="flex items-center gap-1.5">
-              <CheckCircle2 size={13} className="text-current-600" />
-              No signup required
-            </span>
+          {/* Right Column: Illustrative HTML/SVG Dependency Preview */}
+          <div className="lg:col-span-5">
+            <div className="bg-white border border-stone-200 rounded-lg p-5 shadow-2xs relative">
+              <div className="flex items-center justify-between pb-3 mb-4 border-b border-stone-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-brand-600" />
+                  <span className="text-xs font-semibold text-stone-900 uppercase tracking-wide">
+                    Live Impact Dependency Model
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-stone-400 bg-stone-100 px-1.5 py-0.5 rounded">
+                  Example
+                </span>
+              </div>
+
+              {/* Official Change Node */}
+              <div className="bg-paper-100 border border-stone-200 rounded-md p-3 mb-4">
+                <div className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1">
+                  Official Details Shift · Revision 2
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-stone-400 line-through mr-2">Main Auditorium</span>
+                    <span className="font-bold text-brand-700">Innovation Lab</span>
+                  </div>
+                  <span className="text-[11px] font-mono text-stone-500">11:00 AM</span>
+                </div>
+              </div>
+
+              {/* Connected Announcements with clean status connectors */}
+              <div className="space-y-2.5">
+                <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide flex items-center justify-between">
+                  <span>Connected Event Materials</span>
+                  <span className="text-conflict-600 font-bold">4 Need Updates</span>
+                </div>
+
+                {/* Material 1 */}
+                <div className="flex items-center justify-between p-2.5 rounded border border-conflict-200 bg-conflict-50/50 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText size={14} className="text-stone-500 shrink-0" />
+                    <span className="font-semibold text-stone-900 truncate">
+                      WhatsApp Announcement
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-conflict-700 bg-conflict-100 px-2 py-0.5 rounded">
+                    <AlertCircle size={11} /> Outdated
+                  </span>
+                </div>
+
+                {/* Material 2 */}
+                <div className="flex items-center justify-between p-2.5 rounded border border-conflict-200 bg-conflict-50/50 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ImageIcon size={14} className="text-stone-500 shrink-0" />
+                    <span className="font-semibold text-stone-900 truncate">
+                      Campus Poster Graphic
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-conflict-700 bg-conflict-100 px-2 py-0.5 rounded">
+                    <AlertCircle size={11} /> Outdated
+                  </span>
+                </div>
+
+                {/* Material 3 */}
+                <div className="flex items-center justify-between p-2.5 rounded border border-conflict-200 bg-conflict-50/50 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText size={14} className="text-stone-500 shrink-0" />
+                    <span className="font-semibold text-stone-900 truncate">
+                      Volunteer Briefing Notes
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-conflict-700 bg-conflict-100 px-2 py-0.5 rounded">
+                    <AlertCircle size={11} /> Outdated
+                  </span>
+                </div>
+
+                {/* Material 4 */}
+                <div className="flex items-center justify-between p-2.5 rounded border border-current-200 bg-current-50/40 text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText size={14} className="text-stone-500 shrink-0" />
+                    <span className="font-semibold text-stone-900 truncate">
+                      Sponsor Thank-You Note
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-current-700 bg-current-100 px-2 py-0.5 rounded">
+                    <Check size={11} strokeWidth={2.5} /> Matches official
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-stone-100 text-[11px] text-stone-500 leading-snug">
+                Ripple monitors all 4 core facts (date, time, venue, deadline). A change to any detail instantly flags affected materials.
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Existing Events for Authenticated User */}
+        {/* Existing Events for Authenticated User (Full Section) */}
         {user && events.length > 0 && (
-          <div className="max-w-4xl mx-auto mb-16">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold text-stone-600 uppercase tracking-wider">
+          <div className="mb-16 md:mb-20">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-stone-200">
+              <h2 className="text-xs font-bold text-stone-700 uppercase tracking-wider">
                 Your Events ({events.length})
               </h2>
               <button
@@ -171,35 +305,35 @@ export default function HomePage() {
                 className="text-xs font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1"
               >
                 <Plus size={13} />
-                New Event
+                Create Event
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {events.map((ev) => (
                 <Link
                   key={ev.$id}
                   href={`/events/${ev.$id}`}
-                  className="p-5 rounded-2xl border border-stone-200/90 bg-white hover:border-brand-500 hover:shadow-md transition-all group flex flex-col justify-between"
+                  className="p-4 rounded-lg border border-stone-200 bg-white hover:border-brand-500 transition-colors group flex flex-col justify-between shadow-2xs"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">
+                      <span className="text-[11px] font-mono font-semibold px-1.5 py-0.5 rounded bg-stone-100 text-stone-700">
                         Revision {ev.currentRevision}
                       </span>
-                      <span className="text-xs text-stone-600 font-mono">
+                      <span className="text-[11px] text-stone-500 font-mono">
                         {ev.timezone}
                       </span>
                     </div>
-                    <h3 className="text-base font-bold text-stone-900 group-hover:text-brand-700 transition-colors">
+                    <h3 className="text-sm font-bold text-stone-900 group-hover:text-brand-700 transition-colors">
                       {ev.name}
                     </h3>
                   </div>
 
-                  <div className="pt-4 mt-4 border-t border-stone-100 flex items-center justify-between text-xs text-stone-600">
+                  <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
                     <span>Created {new Date(ev.createdAt).toLocaleDateString()}</span>
-                    <span className="text-brand-600 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                      Open Workspace <ArrowRight size={12} />
+                    <span className="text-brand-600 font-semibold flex items-center gap-1 text-[11px]">
+                      Open Workspace <ArrowRight size={11} />
                     </span>
                   </div>
                 </Link>
@@ -208,53 +342,82 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Value Proposition Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto pt-6 border-t border-stone-200/60">
-          <div className="p-6 rounded-2xl bg-white border border-stone-200/80 shadow-2xs">
-            <div className="w-10 h-10 rounded-xl bg-brand-50 border border-brand-100 text-brand-600 flex items-center justify-center mb-4">
-              <Layers size={20} />
+        {/* 3-Step Walkthrough Section */}
+        <div className="pt-10 border-t border-stone-200">
+          <div className="max-w-2xl mb-8">
+            <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">
+              How Ripple Works
             </div>
-            <h3 className="text-sm font-bold text-stone-900 mb-1.5">
-              1. Extract & Confirm Claims
-            </h3>
-            <p className="text-xs text-stone-600 leading-relaxed">
-              Upload poster screenshots or paste announcement copy. Multimodal extraction identifies
-              date, start time, venue, and registration deadline claims for organizer confirmation.
-            </p>
+            <h2 className="text-2xl font-serif font-bold text-stone-900">
+              From announcement drift to verified alignment
+            </h2>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-stone-200/80 shadow-2xs">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 text-amber-600 flex items-center justify-center mb-4">
-              <Sparkles size={20} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Step 1 */}
+            <div className="p-5 rounded-lg bg-white border border-stone-200 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="text-[11px] font-mono font-bold text-brand-600 mb-2">
+                  01 / COLLECT
+                </div>
+                <h3 className="text-sm font-bold text-stone-900 mb-2">
+                  Add Announcements & Posters
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  Paste group announcement text or upload poster graphics. AI extracts date, start time,
+                  venue, and deadline claims with verbatim evidence for organizer review.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-stone-100 text-[11px] text-stone-400 font-mono">
+                Stored in TablesDB & Storage
+              </div>
             </div>
-            <h3 className="text-sm font-bold text-stone-900 mb-1.5">
-              2. Atomic Revision Tracking
-            </h3>
-            <p className="text-xs text-stone-600 leading-relaxed">
-              When official details change, Appwrite TablesDB transactions atomically bump the
-              revision and log changes with optimistic locking, preventing stale edits.
-            </p>
-          </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-stone-200/80 shadow-2xs">
-            <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center mb-4">
-              <AlertCircle size={20} />
+            {/* Step 2 */}
+            <div className="p-5 rounded-lg bg-white border border-stone-200 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="text-[11px] font-mono font-bold text-brand-600 mb-2">
+                  02 / CHANGE
+                </div>
+                <h3 className="text-sm font-bold text-stone-900 mb-2">
+                  Update Official Details Once
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  When logistics shift, update the official record. Appwrite TablesDB records an atomic
+                  revision increment and compares every confirmed claim against the new truth.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-stone-100 text-[11px] text-stone-400 font-mono">
+                Optimistic Locking & Revision History
+              </div>
             </div>
-            <h3 className="text-sm font-bold text-stone-900 mb-1.5">
-              3. Visual Impact Map & Fixes
-            </h3>
-            <p className="text-xs text-stone-600 leading-relaxed">
-              The dependency graph connects canonical facts to affected materials. Review side-by-side
-              corrected copy, produce Version 2, and record external channel acknowledgments.
-            </p>
+
+            {/* Step 3 */}
+            <div className="p-5 rounded-lg bg-white border border-stone-200 shadow-2xs flex flex-col justify-between">
+              <div>
+                <div className="text-[11px] font-mono font-bold text-brand-600 mb-2">
+                  03 / REVIEW
+                </div>
+                <h3 className="text-sm font-bold text-stone-900 mb-2">
+                  Inspect & Apply Corrections
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  View outdated materials on the Impact Map. Inspect exact evidence, review suggested
+                  corrections, save Version 2, and record channel updates in the audit trail.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-stone-100 text-[11px] text-stone-400 font-mono">
+                Side-by-side Diff & Audit Log
+              </div>
+            </div>
           </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-stone-200/80 py-8 bg-white/60 text-center text-xs text-stone-500">
+      <footer className="border-t border-stone-200 py-6 bg-white text-center text-xs text-stone-500">
         <p>
-          Ripple — Built with Next.js, Appwrite TablesDB, Appwrite Auth, Storage & Multimodal AI.
+          Ripple — Built with Next.js, Appwrite TablesDB, Appwrite Auth & Storage.
         </p>
       </footer>
 

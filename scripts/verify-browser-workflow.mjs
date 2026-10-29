@@ -47,9 +47,9 @@ async function runBrowserVerification() {
     console.log('\n[Step 1] Loading home page at', BASE_URL);
     await page.goto(BASE_URL, { waitUntil: 'networkidle2' });
 
-    console.log('[Step 1] Clicking "Try Sample Event: Campus Build Night"...');
-    await page.waitForSelector('button ::-p-text(Try Sample Event: Campus Build Night)', { timeout: 10000 });
-    const sampleBtn = await page.$('button ::-p-text(Try Sample Event: Campus Build Night)');
+    console.log('[Step 1] Clicking demo launch button...');
+    await page.waitForSelector('button[data-testid="try-demo-btn"], button ::-p-text(Try the live demo), button ::-p-text(Try Sample Event)', { timeout: 10000 });
+    const sampleBtn = await page.$('button[data-testid="try-demo-btn"], button ::-p-text(Try the live demo), button ::-p-text(Try Sample Event)');
     await sampleBtn.click();
 
     // Wait for navigation to /events/[id]
@@ -79,8 +79,8 @@ async function runBrowserVerification() {
     // ----------------------------------------------------
     // STEP 2: Commit Venue & Start Time Change via UI
     // ----------------------------------------------------
-    console.log('\n[Step 2] Clicking "Simulate Official Change" button...');
-    const simBtn = await page.waitForSelector('button ::-p-text(Simulate Official Change)', { timeout: 10000 });
+    console.log('\n[Step 2] Clicking "Simulate venue & time shift" button...');
+    const simBtn = await page.waitForSelector('button ::-p-text(Simulate venue & time shift), button ::-p-text(Simulate Official Change)', { timeout: 10000 });
     await simBtn.click();
 
     console.log('[Step 2] Modal opened. Verifying affected materials list...');
@@ -197,10 +197,10 @@ async function runBrowserVerification() {
     const confirmAllBtn = await page.waitForSelector('button ::-p-text(Confirm All Proposed)', { timeout: 10000 });
     await confirmAllBtn.click();
 
-    // Wait for confirmation to process and material to become Verified Current
+    // Wait for confirmation to process and material to match official details
     await page.waitForFunction(() => {
       const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
-      return drawer && drawer.textContent.includes('Verified Current');
+      return drawer && (drawer.textContent.includes('Matches official') || drawer.textContent.includes('Verified Current'));
     }, { timeout: 15000 });
 
     // Inspect drawer content
@@ -216,8 +216,8 @@ async function runBrowserVerification() {
     assert.ok(drawerDetails.sourcePre.includes('Innovation Lab'), 'Saved source MUST contain Innovation Lab');
     assert.ok(!drawerDetails.sourcePre.includes('Main Auditorium'), 'Saved source MUST NOT contain Main Auditorium');
     assert.ok(!drawerDetails.text.includes('Updated in v2'), 'MUST NOT contain synthetic "Updated in v2" quotes');
-    assert.ok(drawerDetails.text.includes('Verified Current'), 'Material must be Verified Current');
-    console.log('✓ Verified: Version 2 saved source has authentic quotes, no synthetic evidence, and is Verified Current!');
+    assert.ok(drawerDetails.text.includes('Matches official') || drawerDetails.text.includes('Verified Current'), 'Material must match official details');
+    console.log('✓ Verified: Version 2 saved source has authentic quotes, no synthetic evidence, and matches official details!');
 
     // Capture Screenshot 3: Corrected Material
     const ss3 = path.join(SCREENSHOTS_DIR, '03_corrected_material.png');
@@ -436,7 +436,7 @@ async function runBrowserVerification() {
     await page.waitForSelector('h1', { timeout: 15000 });
 
     const persistedText = await page.evaluate(() => document.body.innerText);
-    const persistedRev2 = persistedText.includes('Rev 2');
+    const persistedRev2 = persistedText.includes('Rev 2') || persistedText.includes('Revision 2');
     const persistedPoster = persistedText.includes('Official Hackathon Print Poster');
     const persistedDiscord = persistedText.includes('Discord & Telegram Community Blast');
     console.log(`✓ Persistence verified after full browser reload: Rev 2=${persistedRev2}, Poster=${persistedPoster}, Discord Blast=${persistedDiscord}`);
@@ -464,7 +464,7 @@ async function runBrowserVerification() {
     assert.ok(postReloadDetails.sourcePre.includes('11:00 AM'), 'Post-reload saved source MUST contain 11:00 AM');
     assert.ok(postReloadDetails.sourcePre.includes('Innovation Lab'), 'Post-reload saved source MUST contain Innovation Lab');
     assert.ok(!postReloadDetails.sourcePre.includes('Main Auditorium'), 'Post-reload saved source MUST NOT contain Main Auditorium');
-    assert.ok(postReloadDetails.text.includes('Verified Current'), 'Post-reload status MUST remain Verified Current');
+    assert.ok(postReloadDetails.text.includes('Matches official') || postReloadDetails.text.includes('Verified Current'), 'Post-reload status MUST match official details');
 
     // Check preserved Version 1 in Audit History tab
     const auditTabPostReload = await page.waitForSelector('button ::-p-text(Audit History)', { timeout: 10000 });

@@ -61,24 +61,27 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-warm-50 flex flex-col">
+    <div className="min-h-screen bg-paper-50 flex flex-col text-stone-900">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center p-6">
-        <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-xl border border-stone-200">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-black text-stone-900 tracking-tight">
+        <div className="bg-white rounded-lg max-w-md w-full p-6 sm:p-8 shadow-2xs border border-stone-200">
+          <div className="mb-6">
+            <div className="text-[11px] font-semibold text-stone-500 uppercase tracking-wide mb-1">
+              Event Operations Account
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight">
               {mode === 'login' ? 'Organizer Sign In' : 'Create Organizer Account'}
             </h1>
-            <p className="text-xs text-stone-500 mt-1">
+            <p className="text-xs text-stone-600 mt-1">
               {mode === 'login'
-                ? 'Sign in to access your tracked event materials'
-                : 'Manage outdated materials with Appwrite TablesDB'}
+                ? 'Sign in to access your tracked event materials.'
+                : 'Manage event announcements and posters with Appwrite TablesDB.'}
             </p>
           </div>
 
           {error && (
-            <div className="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+            <div className="p-3 mb-4 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
               {error}
             </div>
           )}
@@ -90,13 +93,13 @@ export default function LoginPage() {
                   Full Name
                 </label>
                 <div className="relative">
-                  <User size={15} className="absolute left-3 top-3 text-stone-400" />
+                  <User size={14} className="absolute left-3 top-3 text-stone-400" />
                   <input
                     type="text"
                     placeholder="Alex Morgan"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full text-xs rounded-xl border border-stone-300 p-2.5 pl-9 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+                    className="w-full text-xs rounded-md border border-stone-300 p-2.5 pl-8 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
                     required
                   />
                 </div>
@@ -108,13 +111,13 @@ export default function LoginPage() {
                 Email Address
               </label>
               <div className="relative">
-                <Mail size={15} className="absolute left-3 top-3 text-stone-400" />
+                <Mail size={14} className="absolute left-3 top-3 text-stone-400" />
                 <input
                   type="email"
                   placeholder="organizer@club.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full text-xs rounded-xl border border-stone-300 p-2.5 pl-9 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+                  className="w-full text-xs rounded-md border border-stone-300 p-2.5 pl-8 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
                   required
                 />
               </div>
@@ -125,14 +128,14 @@ export default function LoginPage() {
                 Password
               </label>
               <div className="relative">
-                <Lock size={15} className="absolute left-3 top-3 text-stone-400" />
+                <Lock size={14} className="absolute left-3 top-3 text-stone-400" />
                 <input
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   minLength={8}
-                  className="w-full text-xs rounded-xl border border-stone-300 p-2.5 pl-9 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
+                  className="w-full text-xs rounded-md border border-stone-300 p-2.5 pl-8 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 bg-white"
                   required
                 />
               </div>
@@ -144,7 +147,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-2.5 px-4 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm transition-colors mt-2"
+              className="w-full py-2.5 px-4 rounded-md bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-2xs transition-colors mt-2"
             >
               {isSubmitting
                 ? 'Processing...'
@@ -154,7 +157,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-5 text-center text-xs text-stone-500">
+          <div className="mt-5 text-center text-xs text-stone-600">
             {mode === 'login' ? (
               <span>
                 Don&apos;t have an account?{' '}
@@ -178,12 +181,12 @@ export default function LoginPage() {
             )}
           </div>
 
-          <div className="relative my-6">
+          <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-stone-200" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-stone-600 font-medium">Or</span>
+              <span className="bg-white px-2 text-stone-400 font-medium">Or</span>
             </div>
           </div>
 
@@ -192,9 +195,9 @@ export default function LoginPage() {
             onClick={handleTryDemo}
             disabled={isDemoLoading}
             type="button"
-            className="w-full py-2.5 px-4 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs flex items-center justify-center gap-2 transition-colors"
+            className="w-full py-2.5 px-4 rounded-md bg-stone-100 hover:bg-stone-200/80 border border-stone-300 text-stone-800 font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
           >
-            <Sparkles size={14} className={isDemoLoading ? 'animate-spin text-amber-600' : 'text-amber-600'} />
+            <Sparkles size={14} className={isDemoLoading ? 'animate-spin text-brand-600' : 'text-brand-600'} />
             {isDemoLoading ? 'Launching Demo...' : 'Try Demo Without Signing Up'}
           </button>
         </div>

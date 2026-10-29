@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Sparkles, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { X, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { FactRow } from '@/lib/server/tables-db';
 
 interface DemoChangeModalProps {
@@ -68,103 +68,107 @@ export function DemoChangeModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-stone-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="p-6 border-b border-stone-100 flex items-center justify-between bg-amber-50/50">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-amber-100 text-amber-800">
-              <Sparkles size={18} />
-            </span>
-            <div>
-              <h3 className="text-base font-bold text-stone-900">
-                Simulate Official Change
-              </h3>
-              <p className="text-xs text-stone-500">
-                Hackathon Demo Scenario: Venue & Time Shift
-              </p>
+    <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-lg w-full shadow-lg border border-stone-200 overflow-hidden">
+        {/* Header */}
+        <div className="p-4 sm:p-5 border-b border-stone-200 flex items-center justify-between bg-paper-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-brand-700 uppercase tracking-wide">
+                Demo Scenario
+              </span>
+              <span className="text-stone-300">•</span>
+              <span className="text-xs font-mono text-stone-500">Venue & Start Time Shift</span>
             </div>
+            <h3 className="text-base font-bold text-stone-900 mt-0.5">
+              Simulate Official Change
+            </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 transition-colors"
+            type="button"
+            className="p-1 text-stone-400 hover:text-stone-800 rounded hover:bg-stone-200 transition-colors"
+            title="Close dialog"
+            aria-label="Close dialog"
           >
             <X size={18} />
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-5 space-y-4">
           {error && (
-            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+            <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
               {error}
             </div>
           )}
 
-          <div className="text-xs text-stone-600 leading-relaxed">
-            The facility coordinator just reassigned your event. Ripple will update the official facts in TablesDB and recompute all connected materials in real-time.
-          </div>
+          <p className="text-xs text-stone-600 leading-relaxed">
+            The facility coordinator just reassigned your event room and delayed the start.
+            Ripple will commit this change atomically to Appwrite TablesDB and evaluate all tracked materials.
+          </p>
 
-          {/* Change Comparison Cards */}
-          <div className="space-y-3">
+          {/* Change Comparison */}
+          <div className="space-y-2.5">
             {/* Venue Change */}
-            <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/40 flex items-center justify-between text-xs">
+            <div className="p-3 rounded-md border border-stone-200 bg-paper-50 flex items-center justify-between text-xs">
               <div>
-                <span className="font-bold text-stone-500 uppercase tracking-wide block text-[10px]">
+                <span className="font-semibold text-stone-500 uppercase tracking-wide block text-[10px]">
                   Venue Reassignment
                 </span>
-                <span className="line-through text-stone-600 font-medium">
+                <span className="line-through text-stone-400 font-medium">
                   {currentVenue}
                 </span>
               </div>
-              <ArrowRight size={16} className="text-amber-600 shrink-0" />
+              <ArrowRight size={14} className="text-stone-400 shrink-0 mx-2" />
               <div className="text-right">
-                <span className="font-bold text-stone-500 uppercase tracking-wide block text-[10px]">
-                  New Venue
+                <span className="font-semibold text-brand-700 uppercase tracking-wide block text-[10px]">
+                  New Official Venue
                 </span>
-                <span className="font-bold text-amber-950 font-mono text-sm">
+                <span className="font-bold text-stone-900 font-mono text-sm">
                   {proposedVenue}
                 </span>
               </div>
             </div>
 
             {/* Start Time Change */}
-            <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/40 flex items-center justify-between text-xs">
+            <div className="p-3 rounded-md border border-stone-200 bg-paper-50 flex items-center justify-between text-xs">
               <div>
-                <span className="font-bold text-stone-500 uppercase tracking-wide block text-[10px]">
-                  Start Time Delay
+                <span className="font-semibold text-stone-500 uppercase tracking-wide block text-[10px]">
+                  Start Time Shift
                 </span>
-                <span className="line-through text-stone-600 font-medium">
+                <span className="line-through text-stone-400 font-medium">
                   {currentStartTime}
                 </span>
               </div>
-              <ArrowRight size={16} className="text-amber-600 shrink-0" />
+              <ArrowRight size={14} className="text-stone-400 shrink-0 mx-2" />
               <div className="text-right">
-                <span className="font-bold text-stone-500 uppercase tracking-wide block text-[10px]">
+                <span className="font-semibold text-brand-700 uppercase tracking-wide block text-[10px]">
                   New Start Time
                 </span>
-                <span className="font-bold text-amber-950 font-mono text-sm">
+                <span className="font-bold text-stone-900 font-mono text-sm">
                   {proposedStartTime}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 text-xs text-stone-600 space-y-1">
-            <div className="font-bold text-stone-800 flex items-center gap-1.5">
+          <div className="p-3 bg-stone-50 rounded-md border border-stone-200 text-xs text-stone-600 space-y-1.5">
+            <div className="font-semibold text-stone-900 flex items-center gap-1.5 text-xs">
               <CheckCircle2 size={13} className="text-brand-600" />
-              What to expect after confirmation:
+              Expected outcome after atomic TablesDB commit:
             </div>
-            <ul className="list-disc pl-5 space-y-0.5 text-[11px] text-stone-600">
-              <li>Revision will increment from Rev {currentRevision} to Rev {currentRevision + 1}.</li>
-              <li>Main Poster, WhatsApp announcement, Volunteer Instructions Handout, and Schedule Excerpt Handout will flag conflicts.</li>
-              <li>Registration deadline reminder will remain current (unaffected).</li>
+            <ul className="list-disc pl-5 space-y-1 text-[11px] text-stone-600">
+              <li>Revision will atomically advance from Rev {currentRevision} to Rev {currentRevision + 1}.</li>
+              <li>Main Poster Copy, WhatsApp Group Announcement, Volunteer Instructions Handout, and Schedule Excerpt Handout will become Outdated.</li>
+              <li>Discord Registration Reminder remains unaffected and current.</li>
             </ul>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-stone-100">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-stone-600 hover:text-stone-900 rounded-lg hover:bg-stone-100 transition-colors"
+              className="px-3.5 py-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 rounded-md border border-stone-300 hover:bg-stone-50 transition-colors"
             >
               Cancel
             </button>
@@ -172,7 +176,7 @@ export function DemoChangeModal({
               type="button"
               onClick={handleConfirmChange}
               disabled={isSubmitting}
-              className="px-5 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-colors"
+              className="px-4 py-1.5 text-xs font-semibold rounded-md bg-brand-600 hover:bg-brand-700 text-white shadow-2xs transition-colors"
             >
               {isSubmitting ? 'Committing...' : 'Confirm & Commit Demo Change'}
             </button>
