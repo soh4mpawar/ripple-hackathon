@@ -175,6 +175,28 @@ export function MaterialDetailPanel({
     }
   }
 
+  // Explicit confirmation for all proposed claims
+  const [isConfirmingAll, setIsConfirmingAll] = useState(false);
+  async function handleConfirmAllProposed() {
+    const proposed = currentClaims.filter((c) => c.reviewState === 'proposed');
+    if (proposed.length === 0) return;
+    setIsConfirmingAll(true);
+    try {
+      for (const c of proposed) {
+        await fetch(`/api/claims/${c.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reviewState: 'confirmed' }),
+        });
+      }
+      onRefresh();
+    } catch (err) {
+      console.error('Error confirming proposed claims:', err);
+    } finally {
+      setIsConfirmingAll(false);
+    }
+  }
+
   // Delete claim
   async function handleDeleteClaim(claimId: string) {
     if (!confirm('Are you sure you want to delete this claim?')) return;
@@ -232,6 +254,7 @@ export function MaterialDetailPanel({
       });
 
       if (res.ok) {
+        setActiveTab('claims');
         onRefresh();
       } else {
         const data = await res.json();
@@ -558,6 +581,27 @@ export function MaterialDetailPanel({
               </div>
             ) : (
               <div className="space-y-3">
+                {currentClaims.some((c) => c.reviewState === 'proposed') && (
+                  <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-amber-900">
+                        Review Extracted Claims
+                      </div>
+                      <div className="text-[11px] text-amber-800">
+                        {currentClaims.filter((c) => c.reviewState === 'proposed').length} proposed claim(s) awaiting organizer confirmation.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleConfirmAllProposed}
+                      disabled={isConfirmingAll}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs flex items-center gap-1.5 transition-colors"
+                    >
+                      <Check size={13} />
+                      {isConfirmingAll ? 'Confirming...' : 'Confirm All Proposed'}
+                    </button>
+                  </div>
+                )}
                 {currentClaims.map((claim) => {
                   const comparison = summary?.comparisons.find((c) => c.claimId === claim.id);
                   const isConflict = comparison && !comparison.isMatch;

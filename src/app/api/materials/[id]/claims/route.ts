@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAuthUser } from '@/lib/server/appwrite';
 import { dbAdapter, createClaim, MaterialRow } from '@/lib/server/tables-db';
 import { z } from 'zod';
+import { validateClaimIntegrity } from '@/lib/comparison';
 
 const AddClaimSchema = z.object({
   field: z.enum(['event_date', 'start_time', 'venue', 'registration_deadline']),
@@ -27,6 +28,16 @@ export async function POST(
     const material = await dbAdapter.getRow<MaterialRow>('materials', materialId);
     if (!material || material.ownerId !== user.id) {
       return NextResponse.json({ error: 'Material not found' }, { status: 404 });
+    }
+
+    const validation = validateClaimIntegrity({
+      field: validated.field,
+      rawValue: validated.rawValue,
+      evidenceQuote: validated.evidenceQuote,
+      sourceText: material.sourceText,
+    });
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const claim = await createClaim(

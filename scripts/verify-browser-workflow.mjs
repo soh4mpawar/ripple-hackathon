@@ -184,10 +184,24 @@ async function runBrowserVerification() {
 
     await new Promise((r) => setTimeout(r, 1500));
 
-    // Switch back to "Claims & Review" tab to inspect newly created Version 2
-    const claimsTab = await page.waitForSelector('button ::-p-text(Claims & Review)', { timeout: 10000 });
-    await claimsTab.click();
-    await new Promise((r) => setTimeout(r, 1000));
+    // Drawer automatically navigated to "Claims & Review" tab
+    console.log('[Step 3] Verifying Version 2 newly extracted claims are in proposed state...');
+    await page.waitForFunction(() => {
+      const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
+      return drawer && (drawer.textContent.includes('Review Extracted Claims') || drawer.textContent.includes('proposed'));
+    }, { timeout: 10000 });
+    console.log('✓ Verified: Newly extracted Version 2 claims start as proposed, requiring explicit review.');
+
+    // Explicitly confirm proposed claims
+    console.log('[Step 3] Explicitly confirming proposed claims via "Confirm All Proposed"...');
+    const confirmAllBtn = await page.waitForSelector('button ::-p-text(Confirm All Proposed)', { timeout: 10000 });
+    await confirmAllBtn.click();
+
+    // Wait for confirmation to process and material to become Verified Current
+    await page.waitForFunction(() => {
+      const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
+      return drawer && drawer.textContent.includes('Verified Current');
+    }, { timeout: 15000 });
 
     // Inspect drawer content
     const drawerDetails = await page.evaluate(() => {
@@ -202,8 +216,6 @@ async function runBrowserVerification() {
     assert.ok(drawerDetails.sourcePre.includes('Innovation Lab'), 'Saved source MUST contain Innovation Lab');
     assert.ok(!drawerDetails.sourcePre.includes('Main Auditorium'), 'Saved source MUST NOT contain Main Auditorium');
     assert.ok(!drawerDetails.text.includes('Updated in v2'), 'MUST NOT contain synthetic "Updated in v2" quotes');
-
-    // Verify status is Verified Current
     assert.ok(drawerDetails.text.includes('Verified Current'), 'Material must be Verified Current');
     console.log('✓ Verified: Version 2 saved source has authentic quotes, no synthetic evidence, and is Verified Current!');
 
@@ -431,6 +443,47 @@ async function runBrowserVerification() {
     assert.ok(persistedRev2, 'Must persist Rev 2 after reload');
     assert.ok(persistedPoster, 'Must persist uploaded poster material after reload');
     assert.ok(persistedDiscord, 'Must persist new announcement material after reload');
+
+    // Re-open WhatsApp Group Announcement to check post-reload state
+    console.log('[Step 7] Re-opening WhatsApp Group Announcement to confirm post-reload state...');
+    const persistedCard = await page.waitForSelector('h3 ::-p-text(WhatsApp Group Announcement)', { timeout: 10000 });
+    await persistedCard.evaluate((el) => {
+      const card = el.closest('.group');
+      if (card) card.click();
+      else el.click();
+    });
+
+    await page.waitForSelector('button ::-p-text(Claims & Review)', { timeout: 10000 });
+    const postReloadDetails = await page.evaluate(() => {
+      const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
+      const text = drawer ? drawer.innerText : '';
+      const sourcePre = drawer?.querySelector('pre')?.textContent || '';
+      return { text, sourcePre };
+    });
+
+    assert.ok(postReloadDetails.sourcePre.includes('11:00 AM'), 'Post-reload saved source MUST contain 11:00 AM');
+    assert.ok(postReloadDetails.sourcePre.includes('Innovation Lab'), 'Post-reload saved source MUST contain Innovation Lab');
+    assert.ok(!postReloadDetails.sourcePre.includes('Main Auditorium'), 'Post-reload saved source MUST NOT contain Main Auditorium');
+    assert.ok(postReloadDetails.text.includes('Verified Current'), 'Post-reload status MUST remain Verified Current');
+
+    // Check preserved Version 1 in Audit History tab
+    const auditTabPostReload = await page.waitForSelector('button ::-p-text(Audit History)', { timeout: 10000 });
+    await auditTabPostReload.click();
+    await new Promise((r) => setTimeout(r, 600));
+
+    const inspectBtnPostReload = await page.waitForSelector('button ::-p-text(Inspect Preserved Source)', { timeout: 10000 });
+    await inspectBtnPostReload.click();
+    await new Promise((r) => setTimeout(r, 400));
+
+    const auditSnapshotPostReload = await page.evaluate(() => {
+      const drawer = document.querySelector('aside, [role="dialog"], .fixed.inset-y-0.right-0');
+      return drawer ? drawer.innerText : '';
+    });
+    assert.ok(auditSnapshotPostReload.includes('Main Auditorium'), 'Preserved Version 1 snapshot must remain available post-reload');
+    console.log('✓ Post-reload verified: Both corrections in saved text, confirmed claims match, historical v1 preserved, status Verified Current.');
+
+    await page.keyboard.press('Escape');
+    await new Promise((r) => setTimeout(r, 500));
 
     // ----------------------------------------------------
     // STEP 8: Mobile Viewport Check (375 x 667)

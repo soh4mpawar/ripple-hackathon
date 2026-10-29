@@ -6,10 +6,11 @@ import {
   createClaim,
   recordResolution,
   getEventFacts,
+  updateMaterialStatus,
   MaterialRow,
 } from '@/lib/server/tables-db';
 import { z } from 'zod';
-import { OfficialField, normalizeFieldValue } from '@/lib/comparison';
+import { OfficialField, normalizeFieldValue, validateClaimIntegrity } from '@/lib/comparison';
 import { extractClaimsFromMaterial } from '@/lib/server/ai-extractor';
 
 const ApplyCorrectionSchema = z.object({
@@ -80,24 +81,23 @@ export async function POST(
       validated.replacementFileId
     );
 
-    // If confirmed claims provided for the new version, validate source support
+    // If confirmed claims provided for the new version, validate complete claim integrity
     if (validated.confirmedClaims && validated.confirmedClaims.length > 0) {
       for (const c of validated.confirmedClaims) {
-        if (c.evidenceQuote.startsWith('Updated in v')) {
-          return NextResponse.json(
-            { error: 'Synthetic evidence quotes ("Updated in v...") are not permitted.' },
-            { status: 400 }
-          );
+        const validation = validateClaimIntegrity({
+          field: c.field as OfficialField,
+          rawValue: c.rawValue,
+          evidenceQuote: c.evidenceQuote,
+          sourceText: validated.correctedText || material.sourceText,
+        });
+        if (!validation.valid) {
+          return NextResponse.json({ error: validation.error }, { status: 400 });
         }
-        if (validated.correctedText && !validated.correctedText.includes(c.evidenceQuote)) {
-          return NextResponse.json(
-            { error: `Evidence quote "${c.evidenceQuote}" does not occur in saved material source text.` },
-            { status: 400 }
-          );
-        }
+
         await createClaim(user.id, material.eventId, materialId, newVersion, {
           field: c.field as OfficialField,
           rawValue: c.rawValue,
+          normalizedValue: normalizeFieldValue(c.field, c.rawValue),
           evidenceQuote: c.evidenceQuote,
           evidenceLocation: c.evidenceLocation || 'Corrected text',
           reviewState: 'confirmed',
@@ -111,18 +111,14 @@ export async function POST(
         eventTimezone: event.timezone,
       });
 
-      // Get official facts to cross-reference
-      const officialFacts = await getEventFacts(material.eventId, user.id);
-      const factMap = new Map(officialFacts.map((f) => [f.field, f]));
-
       for (const extractedClaim of extraction.claims) {
         const norm = extractedClaim.proposedNormalizedValue || normalizeFieldValue(extractedClaim.field, extractedClaim.rawValue);
 
-        // If ambiguous (e.g. volunteer arrival), keep as needs_clarification.
-        // Otherwise confirm the real factual claim extracted from the saved copy.
+        // Newly extracted claims MUST remain proposed until the organizer explicitly confirms them.
+        // Ambiguous claims MUST remain needs_clarification.
         const reviewState = extractedClaim.needsClarification
           ? 'needs_clarification'
-          : 'confirmed';
+          : 'proposed';
 
         await createClaim(user.id, material.eventId, materialId, newVersion, {
           field: extractedClaim.field,
@@ -134,6 +130,8 @@ export async function POST(
           ambiguityReason: extractedClaim.ambiguityReason,
         });
       }
+
+      await updateMaterialStatus(user.id, materialId, 'ready', 'unreviewed');
     }
 
     // Record resolution audit

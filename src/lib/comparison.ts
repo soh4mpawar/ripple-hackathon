@@ -52,6 +52,83 @@ export interface MaterialComparisonSummary {
   lastCheckedRevision: number;
 }
 
+export interface ClaimValidationInput {
+  field: OfficialField;
+  rawValue: string;
+  evidenceQuote?: string | null;
+  sourceText?: string | null;
+}
+
+/**
+ * Validates complete claim integrity:
+ * 1. Field classification
+ * 2. Rejection of synthetic "Updated in v..." quotes
+ * 3. Verbatim occurrence of quote in sourceText (when sourceText is present)
+ * 4. Evidence quote supports the claimed value (quote contains claimed value)
+ * 5. Preserves image claims when sourceText is absent
+ */
+export function validateClaimIntegrity(input: ClaimValidationInput): {
+  valid: boolean;
+  error?: string;
+} {
+  const { field, rawValue, evidenceQuote, sourceText } = input;
+
+  if (!rawValue || !rawValue.trim()) {
+    return { valid: false, error: 'Claim value cannot be empty.' };
+  }
+
+  const cleanVal = rawValue.trim();
+
+  // Basic field classification validation
+  if (field === 'start_time') {
+    if (!/\d{1,2}(:\d{2})|\d{1,2}\s*(am|pm)/i.test(cleanVal)) {
+      return { valid: false, error: 'Start time must contain a valid time expression (e.g. 10:00 AM).' };
+    }
+  } else if (field === 'event_date') {
+    if (!/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4})/i.test(cleanVal)) {
+      return { valid: false, error: 'Event date must contain a recognizable date expression.' };
+    }
+  } else if (field === 'registration_deadline') {
+    if (!/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{2,4})/i.test(cleanVal)) {
+      return { valid: false, error: 'Registration deadline must contain a recognizable date expression.' };
+    }
+  } else if (field === 'venue') {
+    if (/^\d{1,2}(:\d{2})?\s*(am|pm)$/i.test(cleanVal)) {
+      return { valid: false, error: 'A time value cannot be classified as a venue.' };
+    }
+  }
+
+  // Reject synthetic quotes across all material kinds
+  if (evidenceQuote && evidenceQuote.startsWith('Updated in v')) {
+    return { valid: false, error: 'Synthetic evidence quotes ("Updated in v...") are not permitted.' };
+  }
+
+  // If sourceText is present (text material), perform strict substring and quote-support checks
+  if (sourceText && typeof sourceText === 'string' && sourceText.trim().length > 0) {
+    if (!evidenceQuote || !evidenceQuote.trim()) {
+      return { valid: false, error: 'Evidence quote is required for text materials.' };
+    }
+
+    // Evidence quote must occur verbatim in sourceText
+    if (!sourceText.includes(evidenceQuote)) {
+      return { valid: false, error: `Evidence quote "${evidenceQuote}" does not occur verbatim in source text.` };
+    }
+
+    // Evidence quote must support the claimed value
+    const cleanQuote = evidenceQuote.toLowerCase().replace(/\s+/g, ' ').trim();
+    const cleanClaimed = cleanVal.toLowerCase().replace(/\s+/g, ' ').trim().replace(/^[\s,.;:!?-]+|[\s,.;:!?-]+$/g, '');
+
+    if (!cleanQuote.includes(cleanClaimed)) {
+      return {
+        valid: false,
+        error: `Claimed ${field.replace('_', ' ')} "${cleanVal}" is not supported by evidence quote "${evidenceQuote}".`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
 /**
  * Normalizes venue by trimming, collapsing spaces, and lowercasing for strict comparison.
  * Note: No fuzzy matching!
@@ -256,12 +333,14 @@ export function compareMaterialClaims(
       continue;
     }
 
-    // Verify source support: evidenceQuote must occur in sourceText and must not be synthetic
-    const isSynthetic = claim.evidenceQuote?.startsWith('Updated in v');
-    const isPresentInSource = sourceText
-      ? sourceText.includes(claim.evidenceQuote) || sourceText.includes(claim.rawValue)
-      : true;
-    const isSupported = !isSynthetic && isPresentInSource;
+    // Validate complete claim integrity (source support, quote support, field classification)
+    const validation = validateClaimIntegrity({
+      field: claim.field,
+      rawValue: claim.rawValue,
+      evidenceQuote: claim.evidenceQuote,
+      sourceText,
+    });
+    const isSupported = validation.valid;
 
     if (!isSupported) {
       unsupportedCount++;
@@ -270,7 +349,7 @@ export function compareMaterialClaims(
     const officialNorm = officialFact.normalizedValue;
     const claimNorm = claim.normalizedValue || normalizeFieldValue(claim.field, claim.rawValue);
 
-    // To match, the claim must BOTH equal the official fact AND be supported by actual source text
+    // To match, the claim must BOTH equal the official fact AND be validated as supported
     const isMatch = isSupported && officialNorm === claimNorm;
     if (!isMatch) {
       conflictCount++;
@@ -288,7 +367,7 @@ export function compareMaterialClaims(
       reason: isMatch
         ? undefined
         : !isSupported
-        ? `Confirmed claim is unsupported: evidence quote "${claim.evidenceQuote}" does not occur in saved material source.`
+        ? validation.error
         : `Official ${claim.field.replace('_', ' ')} is "${officialFact.displayValue}", but material states "${claim.rawValue}"`,
     });
   }

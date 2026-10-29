@@ -6,8 +6,11 @@ import {
   deleteClaim,
   dbAdapter,
   updateMaterialStatus,
+  ClaimRow,
+  MaterialRow,
 } from '@/lib/server/tables-db';
 import { z } from 'zod';
+import { validateClaimIntegrity, OfficialField } from '@/lib/comparison';
 
 const UpdateClaimSchema = z.object({
   field: z
@@ -32,6 +35,32 @@ export async function PATCH(
     const body = await req.json();
 
     const validated = UpdateClaimSchema.parse(body);
+
+    const existingClaim = await dbAdapter.getRow<ClaimRow>('claims', claimId);
+    if (!existingClaim || existingClaim.ownerId !== user.id) {
+      return NextResponse.json({ error: 'Claim not found or unauthorized' }, { status: 404 });
+    }
+
+    const material = await dbAdapter.getRow<MaterialRow>('materials', existingClaim.materialId);
+
+    const effectiveField = (validated.field || existingClaim.field) as OfficialField;
+    const effectiveRawValue = validated.rawValue !== undefined ? validated.rawValue : existingClaim.rawValue;
+    const effectiveEvidenceQuote = validated.evidenceQuote !== undefined ? validated.evidenceQuote : existingClaim.evidenceQuote;
+    const effectiveReviewState = validated.reviewState || existingClaim.reviewState;
+
+    // Validate complete claim integrity on confirmation or claim edits
+    if (effectiveReviewState === 'confirmed' || validated.field || validated.rawValue || validated.evidenceQuote) {
+      const validation = validateClaimIntegrity({
+        field: effectiveField,
+        rawValue: effectiveRawValue,
+        evidenceQuote: effectiveEvidenceQuote,
+        sourceText: material?.sourceText,
+      });
+
+      if (!validation.valid) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+    }
 
     const updatedClaim = await updateClaim(user.id, claimId, validated);
 
