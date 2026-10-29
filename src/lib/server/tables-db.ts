@@ -424,7 +424,11 @@ export async function updateOfficialDetails(
     };
   } catch (error) {
     if (txId) {
-      await dbAdapter.endTransaction(txId, false);
+      try {
+        await dbAdapter.endTransaction(txId, false);
+      } catch {
+        // Ignore rollback errors if transaction already aborted or invalidated
+      }
     }
     throw error;
   }

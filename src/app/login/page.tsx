@@ -36,8 +36,7 @@ export default function LoginPage() {
         throw new Error(data.error || 'Authentication failed');
       }
 
-      router.push('/');
-      router.refresh();
+      window.location.href = '/';
     } catch (err: any) {
       setError(err.message || 'Authentication error');
     } finally {

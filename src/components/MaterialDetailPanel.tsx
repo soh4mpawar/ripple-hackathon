@@ -51,6 +51,15 @@ export function MaterialDetailPanel({
     (c) => c.materialId === material.$id && c.materialVersion === material.version
   );
 
+  // Handle escape key to close panel for accessibility
+  React.useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const [activeTab, setActiveTab] = useState<'claims' | 'corrections' | 'external' | 'history'>('claims');
 
   // Manual claim state
@@ -391,6 +400,19 @@ export function MaterialDetailPanel({
                 Add Claim Manually
               </button>
             </div>
+
+            {/* Image extraction notice if unverified image */}
+            {material.kind === 'image' && currentClaims.length === 0 && (
+              <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
+                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold">Image Claims: Unverified (AI Extraction Unavailable)</div>
+                  <div className="text-[11px] text-amber-800 mt-0.5">
+                    Storage upload verified. Automatic OCR requires a live multimodal AI key. Enter the claims visible on this poster manually below to track them against official facts.
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Manual claim entry form */}
             {showAddClaim && (

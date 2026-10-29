@@ -18,8 +18,7 @@ export function Navbar({ user, onNewEventClick, onTrySampleClick }: NavbarProps)
   async function handleLogout() {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/');
-      router.refresh();
+      window.location.href = '/';
     } catch (err) {
       console.error('Logout error:', err);
     }

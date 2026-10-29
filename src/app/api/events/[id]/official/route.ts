@@ -38,10 +38,15 @@ export async function PATCH(
       newRevision: result.newRevision,
     });
   } catch (error: any) {
-    const isRevisionConflict = error.message?.includes('Revision conflict');
+    const msg = error.message || '';
+    const isConflict =
+      msg.toLowerCase().includes('revision conflict') ||
+      msg.toLowerCase().includes('transaction') ||
+      msg.toLowerCase().includes('conflict') ||
+      error.code === 409;
     return NextResponse.json(
-      { error: error.message || 'Failed to update official details' },
-      { status: isRevisionConflict ? 409 : 400 }
+      { error: msg || 'Failed to update official details' },
+      { status: isConflict ? 409 : 400 }
     );
   }
 }
