@@ -59,10 +59,11 @@ export function DemoChangeModal({
         throw new Error(data.error || 'Failed to apply demo change');
       }
 
+      setIsSubmitting(false);
+      onClose();
       onSuccess();
     } catch (err: any) {
       setError(err.message || 'An error occurred');
-    } finally {
       setIsSubmitting(false);
     }
   }

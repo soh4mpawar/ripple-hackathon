@@ -63,6 +63,7 @@ export function MaterialDetailPanel({
   const [newClaimValue, setNewClaimValue] = useState('');
   const [newClaimQuote, setNewClaimQuote] = useState('');
   const [isSubmittingClaim, setIsSubmittingClaim] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   // Editable claim state
   const [editingClaimId, setEditingClaimId] = useState<string | null>(null);
@@ -70,16 +71,19 @@ export function MaterialDetailPanel({
   const [editClaimValue, setEditClaimValue] = useState('');
   const [editClaimQuote, setEditClaimQuote] = useState('');
   const [isUpdatingClaim, setIsUpdatingClaim] = useState(false);
+  const [editClaimError, setEditClaimError] = useState<string | null>(null);
 
   function startEditClaim(claim: Claim) {
     setEditingClaimId(claim.id);
     setEditClaimField(claim.field);
     setEditClaimValue(claim.rawValue);
     setEditClaimQuote(claim.evidenceQuote);
+    setEditClaimError(null);
   }
 
   async function handleSaveEditedClaim(claimId: string) {
     setIsUpdatingClaim(true);
+    setEditClaimError(null);
     try {
       const res = await fetch(`/api/claims/${claimId}`, {
         method: 'PATCH',
@@ -92,13 +96,14 @@ export function MaterialDetailPanel({
       });
       if (res.ok) {
         setEditingClaimId(null);
-        onRefresh();
+        setEditClaimError(null);
+        await onRefresh();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to update claim');
+        setEditClaimError(data.error || 'Failed to update claim');
       }
-    } catch (err) {
-      console.error('Error saving edited claim:', err);
+    } catch (err: any) {
+      setEditClaimError(err.message || 'Error saving edited claim');
     } finally {
       setIsUpdatingClaim(false);
     }
@@ -167,6 +172,7 @@ export function MaterialDetailPanel({
     if (!newClaimValue.trim() || !newClaimQuote.trim()) return;
 
     setIsSubmittingClaim(true);
+    setClaimError(null);
     try {
       const res = await fetch(`/api/materials/${material.$id}/claims`, {
         method: 'POST',
@@ -182,13 +188,14 @@ export function MaterialDetailPanel({
         setNewClaimValue('');
         setNewClaimQuote('');
         setShowAddClaim(false);
-        onRefresh();
+        setClaimError(null);
+        await onRefresh();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to add claim');
+        setClaimError(data.error || 'Failed to add claim');
       }
-    } catch (err) {
-      console.error('Error adding claim:', err);
+    } catch (err: any) {
+      setClaimError(err.message || 'Error adding claim');
     } finally {
       setIsSubmittingClaim(false);
     }
@@ -196,8 +203,11 @@ export function MaterialDetailPanel({
 
   // Apply suggested correction (creates version N+1)
   const [isApplyingCorrection, setIsApplyingCorrection] = useState(false);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
+
   async function handleApplyCorrection() {
     setIsApplyingCorrection(true);
+    setCorrectionError(null);
     try {
       const res = await fetch(`/api/materials/${material.$id}/version`, {
         method: 'POST',
@@ -215,19 +225,22 @@ export function MaterialDetailPanel({
         throw new Error(data.error || 'Failed to apply correction');
       }
 
-      onRefresh();
+      await onRefresh();
       setActiveTab('claims');
     } catch (err: any) {
-      alert(err.message || 'Error creating new version');
+      setCorrectionError(err.message || 'Error creating new version');
     } finally {
       setIsApplyingCorrection(false);
     }
   }
 
   // Record external channel update acknowledgment
+  const [externalError, setExternalError] = useState<string | null>(null);
+
   async function handleRecordExternal(e: React.FormEvent) {
     e.preventDefault();
     setIsRecordingExternal(true);
+    setExternalError(null);
     try {
       const res = await fetch(`/api/materials/${material.$id}/resolutions`, {
         method: 'POST',
@@ -242,15 +255,16 @@ export function MaterialDetailPanel({
 
       if (res.ok) {
         setExternalNote('');
+        setExternalError(null);
         setExternalSuccess(true);
         setTimeout(() => setExternalSuccess(false), 3000);
-        onRefresh();
+        await onRefresh();
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to record external acknowledgment');
+        setExternalError(data.error || 'Failed to record external acknowledgment');
       }
-    } catch (err) {
-      console.error('Error recording external acknowledgment:', err);
+    } catch (err: any) {
+      setExternalError(err.message || 'Error recording external acknowledgment');
     } finally {
       setIsRecordingExternal(false);
     }
@@ -521,7 +535,10 @@ export function MaterialDetailPanel({
 
               <button
                 type="button"
-                onClick={() => setShowAddClaim(!showAddClaim)}
+                onClick={() => {
+                  setShowAddClaim(!showAddClaim);
+                  setClaimError(null);
+                }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-stone-100 text-stone-800 border border-stone-200 hover:bg-stone-200 transition-colors min-h-[34px]"
               >
                 <Plus size={13} strokeWidth={2.5} />
@@ -551,6 +568,12 @@ export function MaterialDetailPanel({
                 <div className="font-bold text-stone-900 text-xs uppercase">
                   Manual Claim Entry
                 </div>
+
+                {claimError && (
+                  <div className="p-2.5 rounded bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+                    {claimError}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
@@ -601,7 +624,10 @@ export function MaterialDetailPanel({
                 <div className="flex justify-end gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={() => setShowAddClaim(false)}
+                    onClick={() => {
+                      setShowAddClaim(false);
+                      setClaimError(null);
+                    }}
                     className="px-3 py-1.5 text-xs text-stone-700 hover:bg-stone-200/50 rounded"
                   >
                     Cancel
@@ -744,6 +770,11 @@ export function MaterialDetailPanel({
                           <div className="text-[11px] font-bold text-brand-900 uppercase">
                             Edit Claim Details
                           </div>
+                          {editClaimError && (
+                            <div className="p-2.5 rounded bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+                              {editClaimError}
+                            </div>
+                          )}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <div>
                               <label className="block text-[10px] font-semibold text-stone-700 mb-1">
@@ -788,7 +819,10 @@ export function MaterialDetailPanel({
                           <div className="flex justify-end gap-2 pt-1">
                             <button
                               type="button"
-                              onClick={() => setEditingClaimId(null)}
+                              onClick={() => {
+                                setEditingClaimId(null);
+                                setEditClaimError(null);
+                              }}
                               className="px-2.5 py-1 text-xs text-stone-700 hover:bg-stone-100 rounded"
                             >
                               Cancel
@@ -1001,6 +1035,12 @@ export function MaterialDetailPanel({
                   </p>
                 </div>
 
+                {correctionError && (
+                  <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+                    {correctionError}
+                  </div>
+                )}
+
                 {/* Section 3: Primary Action */}
                 <div className="pt-2 border-t border-stone-200 flex items-center justify-end gap-3">
                   <button
@@ -1089,6 +1129,12 @@ export function MaterialDetailPanel({
             {externalSuccess && (
               <div className="p-3 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-medium">
                 Update successfully logged in the audit trail.
+              </div>
+            )}
+
+            {externalError && (
+              <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium">
+                {externalError}
               </div>
             )}
 

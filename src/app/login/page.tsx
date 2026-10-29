@@ -16,6 +16,11 @@ export default function LoginPage() {
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  function toggleMode(newMode: 'login' | 'register') {
+    setMode(newMode);
+    setError(null);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -162,7 +167,8 @@ export default function LoginPage() {
               <span>
                 Don&apos;t have an account?{' '}
                 <button
-                  onClick={() => setMode('register')}
+                  type="button"
+                  onClick={() => toggleMode('register')}
                   className="text-brand-600 font-semibold hover:underline"
                 >
                   Register
@@ -172,7 +178,8 @@ export default function LoginPage() {
               <span>
                 Already registered?{' '}
                 <button
-                  onClick={() => setMode('login')}
+                  type="button"
+                  onClick={() => toggleMode('login')}
                   className="text-brand-600 font-semibold hover:underline"
                 >
                   Sign In

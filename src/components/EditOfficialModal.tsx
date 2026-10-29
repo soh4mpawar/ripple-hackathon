@@ -62,10 +62,11 @@ export function EditOfficialModal({
         throw new Error(data.error || 'Failed to update official details');
       }
 
+      setIsSubmitting(false);
+      onClose();
       onSuccess();
     } catch (err: any) {
       setError(err.message || 'An error occurred during update');
-    } finally {
       setIsSubmitting(false);
     }
   }
