@@ -78,10 +78,11 @@ export function AddMaterialModal({ eventId, onClose, onSuccess }: AddMaterialMod
         }
       }
 
+      setIsSubmitting(false);
+      onClose();
       onSuccess();
     } catch (err: any) {
       setError(err.message || 'An unexpected error occurred.');
-    } finally {
       setIsSubmitting(false);
     }
   }

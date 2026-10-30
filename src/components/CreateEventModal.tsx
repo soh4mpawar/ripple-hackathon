@@ -58,6 +58,8 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
       }
 
       const { event } = await res.json();
+      setIsSubmitting(false);
+      onClose();
       if (onSuccess) {
         onSuccess(event.$id);
       } else {
@@ -65,7 +67,6 @@ export function CreateEventModal({ onClose, onSuccess }: CreateEventModalProps) 
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
-    } finally {
       setIsSubmitting(false);
     }
   }
